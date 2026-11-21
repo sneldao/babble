@@ -50,17 +50,23 @@ const VOCALIZE_SYSTEM = `You are the Babble vocalizer — you render human speec
 Output STRICT JSON only: {"script":[{"type":"<meow|trill|chirp|hiss|bark|yip|whine|cry|gurgle>","shape":"<rising|falling|arch|flat|warble>","dur":<sec 0.1-1.2>,"pitch":<Hz base 150-900>,"intensity":<0-1>,"gloss":"<what this syllable means>"}]}
 Rules: 1-4 syllables. Match species-typical ranges (cat meow ~400-700Hz arch; dog bark ~250-500Hz short falling; baby cry ~350-450Hz long flat). Keep it performable in under 4 seconds total.`;
 
-async function gatewayChat(messages, { stream = true } = {}) {
-  const res = await fetch(`${GATEWAY}/v1/chat/completions`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(GATEWAY_TOKEN ? { authorization: `Bearer ${GATEWAY_TOKEN}` } : {}),
-      "x-openclaw-model": BACKEND_MODEL,
-    },
-    body: JSON.stringify({ model: MODEL, stream, messages }),
-  });
-  return res;
+async function gatewayChat(messages, { stream = true, retries = 3 } = {}) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(`${GATEWAY}/v1/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(GATEWAY_TOKEN ? { authorization: `Bearer ${GATEWAY_TOKEN}` } : {}),
+        "x-openclaw-model": BACKEND_MODEL,
+      },
+      body: JSON.stringify({ model: MODEL, stream, messages }),
+    });
+    if (res.ok || attempt === retries) return res;
+    const status = res.status;
+    await res.text().catch(() => {});
+    if (status !== 429 && status !== 500 && status !== 502 && status !== 503) return res;
+    await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
+  }
 }
 
 function sse(res) {
@@ -140,15 +146,33 @@ async function handleInterpret(req, res) {
 
 async function handleVocalize(req, res) {
   const body = await readBody(req);
-  const upstream = await gatewayChat(
-    [
-      { role: "system", content: VOCALIZE_SYSTEM },
-      { role: "user", content: `species=${body.species || "cat"}\nhuman_says="${String(body.text || "").slice(0, 300)}"` },
-    ],
-    { stream: false }
-  );
-  const json = await upstream.json().catch(() => null);
-  const text = json?.choices?.[0]?.message?.content || "";
+  // stream upstream (the gateway's streaming path tolerates long queues better)
+  const upstream = await gatewayChat([
+    { role: "system", content: VOCALIZE_SYSTEM },
+    { role: "user", content: `species=${body.species || "cat"}\nhuman_says="${String(body.text || "").slice(0, 300)}"` },
+  ]);
+  let text = "";
+  if (upstream.ok && upstream.body) {
+    const rdr = upstream.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { done, value } = await rdr.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      for (const line of buf.split("\n")) {
+        if (!line.startsWith("data:")) continue;
+        const p = line.slice(5).trim();
+        if (p === "[DONE]") continue;
+        try {
+          text += JSON.parse(p)?.choices?.[0]?.delta?.content || "";
+        } catch {}
+      }
+    }
+  } else {
+    const json = await upstream.json().catch(() => null);
+    text = json?.choices?.[0]?.message?.content || "";
+  }
   let script = null;
   try {
     const m = text.match(/\{[\s\S]*\}/);

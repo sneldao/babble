@@ -148,12 +148,25 @@ async function interpret(buf) {
   meta.textContent = `${species} · ${features.shape} ${features.f0Median}Hz · ${(features.durationMs / 1000).toFixed(1)}s`;
 
   const t0 = performance.now();
+  const queueEl = $("#queue");
+  let qi = 0;
+  queueEl.style.display = "block";
+  const qTick = setInterval(() => {
+    qi++;
+    queueEl.textContent = `in queue behind other interpreters… ${(qi / 10).toFixed(1)}s`;
+  }, 100);
   let text = "", bodyStarted = false, tokens = 0;
   const res = await fetch("/api/interpret", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ species, features, image: grabFrame(), history }),
   });
+  if (!res.ok) {
+    clearInterval(qTick);
+    queueEl.style.display = "none";
+    body.textContent = "…the interpreter blinked out (gateway " + res.status + "). Try again.";
+    return;
+  }
   const rdr = res.body.getReader();
   const dec = new TextDecoder();
   let carry = "";
@@ -167,10 +180,17 @@ async function interpret(buf) {
       if (!l.startsWith("data:")) continue;
       const p = JSON.parse(l.slice(5));
       if (p.done) {
+        clearInterval(qTick);
+        queueEl.style.display = "none";
         const tps = Math.round(p.approxTokens / (p.elapsedMs / 1000));
         $("#tps").textContent = tps + " tok/s";
         $("#tpsBar").style.width = Math.min(100, tps / 30) + "%";
         continue;
+      }
+      if (p.delta && qi >= 0) {
+        clearInterval(qTick);
+        qi = -1;
+        queueEl.textContent = "streaming…";
       }
       if (p.delta) {
         text += p.delta;
