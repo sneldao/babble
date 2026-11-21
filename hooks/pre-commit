@@ -1,0 +1,39 @@
+#!/bin/sh
+# Babble pre-commit: secrets scan + JS syntax lint.
+# Install: cp hooks/pre-commit .git/hooks/pre-commit  (or scripts/install-hooks.sh)
+
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$STAGED" ] && exit 0
+
+# --- 1. secrets ---
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks protect --staged --redact --no-banner 2>/dev/null; then
+    echo "pre-commit: gitleaks flagged possible secrets in staged changes" >&2
+    exit 1
+  fi
+else
+  # fallback regex scan of staged content
+  HITS=$(git grep --cached -nE '(csk-[a-zA-Z0-9_-]{20,}|gsk_[a-zA-Z0-9]{20,}|sk-[a-zA-Z0-9]{32,}|AKIA[0-9A-Z]{16}|xox[baprs]-[a-zA-Z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY)' -- $STAGED || true)
+  if [ -n "$HITS" ]; then
+    echo "pre-commit: possible secret in staged changes:" >&2
+    echo "$HITS" >&2
+    exit 1
+  fi
+fi
+
+# --- 2. JS syntax lint ---
+for f in $STAGED; do
+  case "$f" in
+    *.js|*.mjs)
+      [ -f "$f" ] || continue
+      if ! node --check "$f" 2>/dev/null; then
+        echo "pre-commit: syntax error in $f" >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+exit 0

@@ -155,11 +155,12 @@ async function interpret(buf) {
     qi++;
     queueEl.textContent = `in queue behind other interpreters… ${(qi / 10).toFixed(1)}s`;
   }, 100);
-  let text = "", bodyStarted = false, tokens = 0;
+  let text = "", bodyStarted = false;
+  const payload = { species, features, image: grabFrame(), history };
   const res = await fetch("/api/interpret", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ species, features, image: grabFrame(), history }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     clearInterval(qTick);
@@ -167,6 +168,45 @@ async function interpret(buf) {
     body.textContent = "…the interpreter blinked out (gateway " + res.status + "). Try again.";
     return;
   }
+  if ($("#race")?.checked) raceRival(payload);
+  await pump(res, {
+    delta(d) {
+      if (qi >= 0) {
+        clearInterval(qTick);
+        qi = -1;
+        queueEl.textContent = "streaming…";
+      }
+      text += d;
+      const split = text.split("\n---\n");
+      if (split.length > 1 || bodyStarted) {
+        bodyStarted = true;
+        const hdr = split[0];
+        const vocal = hdr.match(/VOCAL:\s*(\S+)/)?.[1];
+        const mood = hdr.match(/MOOD:\s*(.+)/)?.[1]?.trim();
+        const conf = hdr.match(/CONFIDENCE:\s*(\S+)/)?.[1];
+        meta.textContent =
+          `${species}${vocal ? " · " + vocal : ""}${mood ? " · " + mood : ""}` +
+          (conf ? ` · ${(parseFloat(conf) * 100).toFixed(0)}%` : "") +
+          ` · ${features.f0Median}Hz`;
+        body.textContent = split.slice(1).join("\n---\n");
+      }
+    },
+    done(p) {
+      clearInterval(qTick);
+      queueEl.style.display = "none";
+      const tps = Math.round(p.approxTokens / (p.elapsedMs / 1000));
+      $("#tps").textContent = tps + " tok/s";
+      $("#tpsBar").style.width = Math.min(100, tps / 30) + "%";
+    },
+  });
+  const elapsed = (performance.now() - t0) / 1000;
+  $("#lat").textContent = elapsed.toFixed(2) + "s";
+  const said = body.textContent.trim();
+  if (said) history.push(`${species}: "${said}"`);
+  avatarReact("speak");
+}
+
+async function pump(res, h) {
   const rdr = res.body.getReader();
   const dec = new TextDecoder();
   let carry = "";
@@ -179,43 +219,44 @@ async function interpret(buf) {
     for (const l of lines) {
       if (!l.startsWith("data:")) continue;
       const p = JSON.parse(l.slice(5));
-      if (p.done) {
-        clearInterval(qTick);
-        queueEl.style.display = "none";
-        const tps = Math.round(p.approxTokens / (p.elapsedMs / 1000));
-        $("#tps").textContent = tps + " tok/s";
-        $("#tpsBar").style.width = Math.min(100, tps / 30) + "%";
-        continue;
-      }
-      if (p.delta && qi >= 0) {
-        clearInterval(qTick);
-        qi = -1;
-        queueEl.textContent = "streaming…";
-      }
-      if (p.delta) {
-        text += p.delta;
-        tokens++;
-        const split = text.split("\n---\n");
-        if (split.length > 1 || bodyStarted) {
-          bodyStarted = true;
-          const hdr = split[0];
-          const vocal = hdr.match(/VOCAL:\s*(\S+)/)?.[1];
-          const mood = hdr.match(/MOOD:\s*(.+)/)?.[1]?.trim();
-          const conf = hdr.match(/CONFIDENCE:\s*(\S+)/)?.[1];
-          meta.textContent =
-            `${species}${vocal ? " · " + vocal : ""}${mood ? " · " + mood : ""}` +
-            (conf ? ` · ${(parseFloat(conf) * 100).toFixed(0)}%` : "") +
-            ` · ${features.f0Median}Hz`;
-          body.textContent = split.slice(1).join("\n---\n");
-        }
-      }
+      if (p.done) h.done(p);
+      else if (p.delta) h.delta(p.delta);
     }
   }
-  const elapsed = (performance.now() - t0) / 1000;
-  $("#lat").textContent = elapsed.toFixed(2) + "s";
-  const said = body.textContent.trim();
-  if (said) history.push(`${species}: "${said}"`);
-  avatarReact("speak");
+}
+
+// side-by-side: same prompt on a GPU provider, racing the Cerebras bubble
+async function raceRival(payload) {
+  const card = bubble("rival", "");
+  const meta = card.querySelector(".meta");
+  const body = card.querySelector(".body");
+  meta.textContent = "groq · same prompt · waiting…";
+  const t0 = performance.now();
+  const res = await fetch("/api/compare", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    meta.textContent = "groq · offline (no key)";
+    return;
+  }
+  let text = "", bodyStarted = false;
+  await pump(res, {
+    delta(d) {
+      text += d;
+      const split = text.split("\n---\n");
+      if (split.length > 1 || bodyStarted) {
+        bodyStarted = true;
+        body.textContent = split.slice(1).join("\n---\n");
+      }
+      meta.textContent = `groq · ${((performance.now() - t0) / 1000).toFixed(1)}s`;
+    },
+    done(p) {
+      const tps = Math.round(p.approxTokens / (p.elapsedMs / 1000));
+      meta.textContent = `groq · ${tps} tok/s · ${(p.elapsedMs / 1000).toFixed(1)}s`;
+    },
+  });
 }
 
 // ---------- talk back ----------
@@ -245,7 +286,7 @@ function bubble(kind, content) {
   if (kind === "voc") {
     const gloss = content.map((s) => `${s.type}(${s.gloss || "?"})`).join(" → ");
     div.innerHTML = `<div class="meta">you → ${species}</div><div class="body vocline">${gloss}</div>`;
-  } else if (kind === "animal") {
+  } else if (kind === "animal" || kind === "rival") {
     div.innerHTML = `<div class="meta"></div><div class="body"></div>`;
   } else {
     div.innerHTML = `<div class="body">${escapeHtml(content)}</div>`;

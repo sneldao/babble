@@ -96,3 +96,8 @@ canvas { width: 100%; border-radius: 8px; background: var(--panel); border: 1px 
   font: 18px var(--mono); width: 48px; border-radius: 10px; border: none;
   background: var(--coral); color: var(--bg); cursor: pointer;
 }
+
+.msg.rival { background: #12161f; border: 1px solid #5b9dff33; align-self: flex-start; }
+.msg.rival .meta { color: #5b9dff99; }
+label.race { font-size: 11px; color: var(--dim); display: flex; align-items: center; gap: 4px; letter-spacing: 0.5px; cursor: pointer; }
+label.race input { accent-color: #5b9dff; }

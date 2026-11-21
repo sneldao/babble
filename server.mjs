@@ -50,6 +50,17 @@ const VOCALIZE_SYSTEM = `You are the Babble vocalizer — you render human speec
 Output STRICT JSON only: {"script":[{"type":"<meow|trill|chirp|hiss|bark|yip|whine|cry|gurgle>","shape":"<rising|falling|arch|flat|warble>","dur":<sec 0.1-1.2>,"pitch":<Hz base 150-900>,"intensity":<0-1>,"gloss":"<what this syllable means>"}]}
 Rules: 1-4 syllables. Match species-typical ranges (cat meow ~400-700Hz arch; dog bark ~250-500Hz short falling; baby cry ~350-450Hz long flat). Keep it performable in under 4 seconds total.`;
 
+const GROQ_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_MODEL = process.env.GROQ_MODEL || "moonshotai/kimi-k2-instruct-0905";
+
+function groqChat(messages) {
+  return fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${GROQ_KEY}` },
+    body: JSON.stringify({ model: GROQ_MODEL, stream: true, messages }),
+  });
+}
+
 async function gatewayChat(messages, { stream = true, retries = 3 } = {}) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const res = await fetch(`${GATEWAY}/v1/chat/completions`, {
@@ -78,8 +89,7 @@ function sse(res) {
   return (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 }
 
-async function handleInterpret(req, res) {
-  const body = await readBody(req);
+function buildInterpretMessages(body) {
   const { species = "cat", features, image, history = [] } = body;
 
   const featSummary = features
@@ -105,12 +115,15 @@ async function handleInterpret(req, res) {
       ]
     : userText;
 
-  const upstream = await gatewayChat([
+  return [
     { role: "system", content: INTERPRET_SYSTEM },
     { role: "user", content },
-  ]);
+  ];
+}
+
+async function pumpSse(upstream, res) {
   if (!upstream.ok || !upstream.body) {
-    res.writeHead(502).end(await upstream.text().catch(() => "gateway error"));
+    res.writeHead(502).end(await upstream.text().catch(() => "upstream error"));
     return;
   }
   const send = sse(res);
@@ -142,6 +155,17 @@ async function handleInterpret(req, res) {
   } catch {}
   send({ done: true, elapsedMs: Date.now() - t0, approxTokens: tokens });
   res.end();
+}
+
+async function handleInterpret(req, res) {
+  const upstream = await gatewayChat(buildInterpretMessages(await readBody(req)));
+  return pumpSse(upstream, res);
+}
+
+async function handleCompare(req, res) {
+  if (!GROQ_KEY) return res.writeHead(501).end("no GROQ_API_KEY configured");
+  const upstream = await groqChat(buildInterpretMessages(await readBody(req)));
+  return pumpSse(upstream, res);
 }
 
 async function handleVocalize(req, res) {
@@ -202,6 +226,7 @@ function readBody(req) {
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "POST" && req.url === "/api/interpret") return handleInterpret(req, res);
+    if (req.method === "POST" && req.url === "/api/compare") return handleCompare(req, res);
     if (req.method === "POST" && req.url === "/api/vocalize") return handleVocalize(req, res);
     if (req.method === "GET" && req.url === "/api/config") {
       res.writeHead(200, { "content-type": "application/json" });
