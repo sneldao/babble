@@ -68,6 +68,7 @@ select, .filelabel, #cam {
 
 canvas { width: 100%; border-radius: 8px; background: var(--panel); border: 1px solid #ffffff0d; }
 #wave { height: 72px; } #spec { height: 120px; } #contour { height: 60px; }
+#queue { display: none; color: var(--coral); font-size: 12px; letter-spacing: 0.5px; }
 
 .side { display: flex; flex-direction: column; padding: 22px; gap: 14px; }
 .telemetry { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
