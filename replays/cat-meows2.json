@@ -1,0 +1,38 @@
+{
+  "clip": "cat-meows2.wav",
+  "species": "cat",
+  "header": {
+    "vocal": "distress",
+    "mood": "urgent distress",
+    "confidence": 0.69
+  },
+  "deltas": [
+    {
+      "tMs": 0.10000000149011612,
+      "text": "Enough. I"
+    },
+    {
+      "tMs": 53.100000001490116,
+      "text": " have"
+    },
+    {
+      "tMs": 66.60000000149012,
+      "text": " asked"
+    },
+    {
+      "tMs": 77.5,
+      "text": " and asked; stop"
+    },
+    {
+      "tMs": 82.69999999552965,
+      "text": " ignoring me and come check on"
+    },
+    {
+      "tMs": 91.29999999701977,
+      "text": " me now."
+    }
+  ],
+  "queueMs": 27576.39999999851,
+  "decodeMs": 554.2000000029802,
+  "recordedAt": "2026-11-22T07:38:09.604Z"
+}

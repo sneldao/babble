@@ -1,0 +1,38 @@
+{
+  "clip": "dog-bark.wav",
+  "species": "dog",
+  "header": {
+    "vocal": "play",
+    "mood": "eager",
+    "confidence": 0.72
+  },
+  "deltas": [
+    {
+      "tMs": 0.10000000149011612,
+      "text": "That’s my let’s"
+    },
+    {
+      "tMs": 175,
+      "text": "-go"
+    },
+    {
+      "tMs": 289.19999999552965,
+      "text": " bark! Come on, come on—chase"
+    },
+    {
+      "tMs": 319.3999999985099,
+      "text": " me or throw"
+    },
+    {
+      "tMs": 323,
+      "text": " something"
+    },
+    {
+      "tMs": 331.3999999985099,
+      "text": "!"
+    }
+  ],
+  "queueMs": 58444.29999999702,
+  "decodeMs": 5512.80000000447,
+  "recordedAt": "2026-11-22T07:45:54.088Z"
+}
