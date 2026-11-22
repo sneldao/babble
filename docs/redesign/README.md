@@ -63,17 +63,21 @@ them; do not edit it.
 | `public/css/ribbon.css`, `public/css/telemetry.css` | B |
 | `public/character.js`, `public/audio.js`, `public/synth.js`, `public/sfx.js` | C |
 | `public/css/character.css` | C |
-| `public/captions.js`, `public/start.js`, `public/controls.js` | D |
-| `public/css/captions.css`, `public/css/start.css`, `public/css/controls.css` | D |
-| `public/vendor/` (gsap) | D |
+| `public/captions.js`, `public/start.js`, `public/controls.js`, `public/goo.js` | D |
+| `public/css/captions.css`, `public/css/start.css`, `public/css/controls.css`, `public/css/goo.css` | D |
 
 `public/style.css` is deleted by A in the scaffold commit.
 
-## Current status (updated 22 Nov, 09:40 UTC)
+## Current status (updated 22 Nov, 10:20 UTC)
 
 - **Everything is merged to `main`.** `redesign-integration` and `redesign`
   point at the same commit and are kept for history. The per-developer
-  branches are fully merged.
+  branches are fully merged and their worktrees removed.
+- **Polish landed:** the GooeyStickyMenu stretch item is in — a goo-filter
+  pill (SVG blur + alpha ramp, `public/goo.js`) slides under the active
+  species button on the start screen and in the controls. The stage now
+  enters in a staggered sequence when the start dialog lifts, and the
+  verdict header stamps in with the ferro spring.
 - **Live OpenClaw config for agent `babble`:** the workspace is the main
   checkout's `agent-workspace/`, `thinkingDefault: "low"`, `skills: []`,
   tools `read`/`write`/`edit` confined to the workspace. The Cerebras model

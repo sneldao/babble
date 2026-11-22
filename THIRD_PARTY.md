@@ -9,3 +9,4 @@
 | `public/synth.js` vibrato recipe | thibautlfr/ocarina `src/experience/audio/vibrato.ts` | Copyright (c) 2026 Thibaut Lefrançois | MIT (LICENSE in the ocarina repo) |
 | `public/character.js`, `public/controls.js`, `public/sfx.js` spring integrator + SFX recipes | argofowl/ferro-toggle `index.html` | Copyright (c) 2026 argofowl | MIT (LICENSE in the ferro-toggle repo) |
 | `public/start.js` title-screen shape | thibautlfr/ocarina `src/experience/ui/title-screen.ts` | Copyright (c) 2026 Thibaut Lefrançois | MIT (LICENSE in the ocarina repo) |
+| `public/goo.js` goo-filter indicator technique | codrops/GooeyStickyMenu `js/goo.js` | Copyright (c) 2009-2026 Codrops | MIT (LICENSE in the GooeyStickyMenu repo) |
