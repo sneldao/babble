@@ -142,6 +142,8 @@ async function captureFile(file) {
 
 // ---------- interpretation ----------
 async function playReplay(rec, waitedMs) {
+  const replayText = (rec.deltas || []).map((d) => d.text).join("");
+  if (!replayText.trim()) return false; // an empty recording is "no replay"
   stage.emit("interpret:header", { lane: "cerebras", ...rec.header });
   stage.set("streaming");
   const t0 = performance.now();
@@ -225,7 +227,7 @@ async function run(cap) {
       tokensEstimated: r.tokensEstimated, reasoningTokens: r.reasoningTokens,
     });
     stage.set("done");
-    if (cfg.record && cap.source === "clip") {
+    if (cfg.record && cap.source === "clip" && turns === 1 && r.text.trim()) {
       fetch("/api/dev/replay", {
         method: "POST",
         headers: { "content-type": "application/json" },

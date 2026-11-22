@@ -42,6 +42,7 @@ const QUEUE_LINES = {
 const ERROR_TEXT = {
   timeout: "No answer after 12 seconds. The model's queue is full.",
   network: "Lost the connection.",
+  empty: "The model answered with nothing. Try again.",
   unvoiced: "Nothing voiced in that capture. Try closer to the mic.",
   internal: "Something broke on our side.",
 };
@@ -223,6 +224,14 @@ export function mount(el, st) {
     for (const chunk of text.split(/(\s+)/)) {
       if (!chunk) continue;
       if (/^\s+$/.test(chunk)) {
+        // Append the space inside the previous word's inline-block so a
+        // wrapped line never begins with a whitespace span.
+        const prev = L.uttIn.lastElementChild;
+        if (prev && prev.classList.contains("cap-word")) {
+          prev.appendChild(document.createTextNode(chunk));
+          L.text += chunk;
+          continue;
+        }
         for (const c of chunk) {
           const sp = document.createElement("span");
           sp.className = "cap-word";

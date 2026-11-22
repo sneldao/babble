@@ -2,37 +2,82 @@
   "clip": "dog-bark.wav",
   "species": "dog",
   "header": {
-    "vocal": "play",
-    "mood": "eager",
-    "confidence": 0.72
+    "vocal": "alarm",
+    "mood": "alert excitement",
+    "confidence": 0.66,
+    "evidence": "3 short calls over 2.61 s; median f0 429 Hz; spectral centroid 1014 Hz"
   },
   "deltas": [
     {
-      "tMs": 0.10000000149011612,
-      "text": "That’s my let’s"
+      "tMs": 0,
+      "text": "Something"
     },
     {
-      "tMs": 175,
-      "text": "-go"
+      "tMs": 8.399999998509884,
+      "text": "’s happening! Come look"
     },
     {
-      "tMs": 289.19999999552965,
-      "text": " bark! Come on, come on—chase"
+      "tMs": 29.100000001490116,
+      "text": "—"
     },
     {
-      "tMs": 319.3999999985099,
-      "text": " me or throw"
+      "tMs": 30.30000000447035,
+      "text": "come"
     },
     {
-      "tMs": 323,
-      "text": " something"
+      "tMs": 32.100000001490116,
+      "text": " look"
     },
     {
-      "tMs": 331.3999999985099,
+      "tMs": 33.5,
+      "text": " right"
+    },
+    {
+      "tMs": 34.80000000447035,
+      "text": " now"
+    },
+    {
+      "tMs": 35.899999998509884,
+      "text": "!"
+    },
+    {
+      "tMs": 36.899999998509884,
+      "text": " I"
+    },
+    {
+      "tMs": 37.899999998509884,
+      "text": "’ll"
+    },
+    {
+      "tMs": 55.600000001490116,
+      "text": " keep"
+    },
+    {
+      "tMs": 56.70000000298023,
+      "text": " announcing"
+    },
+    {
+      "tMs": 64.5,
+      "text": " it"
+    },
+    {
+      "tMs": 70.70000000298023,
+      "text": " until"
+    },
+    {
+      "tMs": 73,
+      "text": " you"
+    },
+    {
+      "tMs": 75.60000000149012,
+      "text": " do"
+    },
+    {
+      "tMs": 77.70000000298023,
       "text": "!"
     }
   ],
-  "queueMs": 58444.29999999702,
-  "decodeMs": 5512.80000000447,
-  "recordedAt": "2026-11-22T07:45:54.088Z"
+  "queueMs": 3706.39999999851,
+  "decodeMs": 174.10000000149012,
+  "recordedAt": "2026-11-22T08:59:07.377Z"
 }
