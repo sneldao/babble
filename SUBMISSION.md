@@ -26,7 +26,7 @@ Repo: https://github.com/sneldao/babble
 
 ## Speed bounty (Discord #share-your-demo)
 
-Speed Bounty entry: 1,032 TPS
+Speed Bounty entry: 1,032 TPS (server-side p90; 572 mean on the same run)
 
 Products found by the patched OpenClaw run (session
 `main/9192d345640b442eb9353af35f791131` on the patched gateway, :19001):
