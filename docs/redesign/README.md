@@ -68,7 +68,7 @@ them; do not edit it.
 
 `public/style.css` is deleted by A in the scaffold commit.
 
-## Current status (updated 22 Nov, 11:46 UTC)
+## Current status (updated 22 Nov, 12:56 UTC)
 
 - **Everything is merged to `main`.** `main`, `redesign` and
   `redesign-integration` all point at the same commit; the per-developer
@@ -144,12 +144,12 @@ them; do not edit it.
 - **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
   `agent-workspace/memory/`) are gitignored.
 
-## Left before submission (22 Nov, 11:46 UTC)
+## Left before submission (22 Nov, 12:56 UTC)
 
 | # | Item | Owner | Notes |
 |---|---|---|---|
 | 1 | Speed bounty post | you (in progress) | Figures fixed: 1,032 TPS p90 server-side, 572 mean on the same run. Draft in `SUBMISSION.md`. |
-| 2 | 60 s demo video | you | Shot list below. Run `node scripts/cerebras-window.mjs` and start each live take on `<- go`; replay fallback covers missed windows. |
+| 2 | 60 s demo video | Devin drives; you supply pet videos | Plan is in "Demo video plan" below. Needs 2-3 clips of a real animal calling, the pet's name, and your call on the open decisions. |
 | 3 | `SUBMISSION.md` placeholders | you | Team handle `@<your-handle>` and the video link/attachment. |
 | 4 | GPU race lane — decide | you | Either `NEBIUS_API_KEY` in the gateway env + restart + `scripts/setup-openclaw.sh`, then test the race live (mock-tested only so far), or cut the race claim from the README/SUBMISSION copy. |
 | 5 | Real microphone check | you | Mic capture has never run on real hardware; do one LISTEN take against a real animal before filming. |
@@ -194,16 +194,39 @@ and as a marker on the ribbon; decode time as the telemetry headline with
 wait shown apart and `est.` on estimated rates; the pet name field; the
 "Race a GPU" switch; and a start-screen sentence that makes no speed promise.
 
-Demo video (60 s), so a viewer sees the sound drive the words:
+Demo video plan (60 s, 16:9, 1080p; proposed 22 Nov, 12:56 UTC, not yet agreed)
 
-1. Two different meows from the same cat, back to back: different contours,
-   different classes, and the evidence line says why.
-2. A counterfactual: the same clip with its pitch flattened or shifted, and
-   the class and mood change with it.
-3. A reply ("dinner is at six"), then the next meow complains about six.
-4. Race on: decode times side by side. If the trial queue is long while
-   filming, show the wait honestly or use a labelled REPLAY. Never cut a
-   spinner silently.
+Devin drives the app and the edit; the user supplies real pet videos. The
+video must read with the sound off (X autoplays muted), so the app's own
+large captions and short on-screen labels carry it; the meows are a bonus.
+
+| Time | Beat | What is on screen |
+|---|---|---|
+| 0:00-0:06 | Cold open | The user's pet video full frame, the animal calls, hard cut to Babble landing the translation in large type. No title card first. |
+| 0:06-0:18 | It is measured | The same clip uploaded: ribbon paints while it plays, call brackets and pitch line settle, the verdict stamps in, the evidence line and its ribbon marker are held for two seconds, the snapshot card shows the frame that was sent. |
+| 0:18-0:28 | It listens | A second, different call from the same animal: a different class and different evidence. |
+| 0:28-0:40 | It remembers | A typed reply is voiced back as meows; the next call answers it. The pet is given its real name first, so the session starts with empty memory and the callback is caused on camera. |
+| 0:40-0:52 | Speed | The decode readout, with wait shown beside it. The two-lane race is used only if a live take with both lanes finishing exists; otherwise this beat shows decode time on Cerebras alone plus the separately measured bounty figure, labelled as such. |
+| 0:52-1:00 | End card | Wordmark, hosted demo URL, repo, `#KimiOnCerebras`. |
+
+Rules for the edit:
+
+- Live takes wherever the trial queue allows (`node scripts/cerebras-window.mjs`,
+  start on `<- go`). A take that falls back keeps its REPLAY label in frame.
+- Queue wait may be trimmed, but the wait figure stays visible in telemetry
+  and the cut carries a small "queue wait trimmed" label. Never present
+  replay timing as a live result, and never show a race that did not finish
+  live on both lanes.
+- Several takes are recorded per beat and the best real one is used; no
+  model output is edited or re-typed.
+- The mic path is not shown, because it has not been tested on hardware.
+
+Capture, not yet proven end to end: frames from the browser over CDP
+screencast (frames arrive; the frame rate under acknowledgement is not yet
+measured), app audio tapped from the page's audio graph, assembled with
+ffmpeg. Screen capture through ffmpeg/avfoundation hung on this machine,
+probably on the Screen Recording permission. First step is a 10 s test
+recording with picture and sound in step.
 
 ## Branches and order
 
