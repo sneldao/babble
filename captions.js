@@ -44,6 +44,7 @@ const ERROR_TEXT = {
   network: "Lost the connection.",
   empty: "The model answered with nothing. Try again.",
   unvoiced: "Nothing voiced in that capture. Try closer to the mic.",
+  demo: "This hosted demo plays recorded answers — run it locally for live ones.",
   internal: "Something broke on our side.",
 };
 const errorText = (reason, status, message) => {
@@ -508,12 +509,12 @@ export function mount(el, st) {
       });
       replyEl.appendChild(g);
     }),
-    st.on("vocalize:error", () => {
+    st.on("vocalize:error", (d) => {
       const g = document.createElement("div");
       g.className = "cap-glosses";
       const e = document.createElement("span");
       e.className = "cap-error on";
-      e.textContent = "Couldn't vocalize that.";
+      e.textContent = d?.reason === "demo" ? "Talking back needs the live model — this is the hosted replay demo." : "Couldn't vocalize that.";
       const b = document.createElement("button");
       b.className = "cap-retry";
       b.type = "button";

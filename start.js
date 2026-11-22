@@ -71,7 +71,7 @@ export function mount(el, st) {
   const charTeardown = mountChar(pane, st);
 
   const coarse = matchMedia("(pointer: coarse)").matches;
-  Promise.allSettled([document.fonts.ready, fetch("/api/config")]).then(() => {
+  Promise.allSettled([document.fonts.ready, fetch("api/config")]).then(() => {
     btn.disabled = false;
     btn.textContent = coarse ? "Tap to start" : "Press Space to start";
     btn.focus();

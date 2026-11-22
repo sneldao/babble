@@ -19,10 +19,17 @@ mountControls(document.getElementById("controls"), stage);
 
 let cfg = {};
 try {
-  cfg = await (await fetch("/api/config")).json();
+  const res = await fetch("api/config");
+  if (res.ok) cfg = await res.json();
+} catch {}
+// Hosted static demo (e.g. GitHub Pages): no server, so no live model. Sample
+// clips play their recorded real responses labelled REPLAY; mic, file and
+// talk-back show an honest "hosted demo" note. ?demo forces it locally.
+if (new URLSearchParams(location.search).has("demo") || !cfg.model) {
+  cfg.demo = true;
+  document.getElementById("engine").textContent = "hosted demo · recorded answers";
+} else {
   document.getElementById("engine").textContent = `${cfg.model} · OpenClaw on Cerebras`;
-} catch {
-  document.getElementById("engine").textContent = "engine offline";
 }
 
 const startEl = document.getElementById("start");
@@ -85,7 +92,7 @@ function cancelInFlight() {
 function endSession() {
   if (turns > 0) {
     try {
-      navigator.sendBeacon("/api/session/end", JSON.stringify({ sessionId, pet, species: stage.species }));
+      navigator.sendBeacon("api/session/end", JSON.stringify({ sessionId, pet, species: stage.species }));
     } catch {}
   }
   sessionId = crypto.randomUUID();
@@ -105,7 +112,7 @@ const guard = (fn) => async (detail) => {
 // ---------- capture ----------
 async function captureClip(file, species) {
   if (species) stage.setSpecies(species);
-  const buf = await decode(await (await fetch("/clips/" + file)).arrayBuffer());
+  const buf = await decode(await (await fetch("clips/" + file)).arrayBuffer());
   const { analyser, startedAt, durationMs } = playBuffer(buf);
   stage.set("listening");
   stage.emit("capture:start", { source: "clip", analyser, startedAt, durationMs });
@@ -182,6 +189,26 @@ async function run(cap) {
   const t0 = performance.now();
   stage.emit("interpret:start", { lane: "cerebras", t0 });
 
+  if (cfg.demo) {
+    if (race) {
+      stage.emit("interpret:start", { lane: "rival", t0 });
+      stage.emit("interpret:error", { lane: "rival", reason: "demo" });
+    }
+    if (cap.source === "clip") {
+      try {
+        const res = await fetch("replays/" + cap.clip.replace(/\.wav$/, "") + ".json");
+        if (!res.ok) throw new Error("no replay");
+        const rec = await res.json();
+        // A short queue beat so WAIT registers, then the recorded stream.
+        await new Promise((r) => setTimeout(r, 600 + Math.random() * 500));
+        if (seq === runSeq && (await playReplay(rec, performance.now() - t0))) return;
+      } catch {}
+    }
+    stage.emit("interpret:error", { lane: "cerebras", reason: "demo" });
+    if (seq === runSeq) stage.set("error", { reason: "demo" });
+    return;
+  }
+
   const wire = (lane) => interpret(payload, {
     lane,
     budgetMs: lane === "cerebras" && cfg.record ? 180000 : 12000,
@@ -228,7 +255,7 @@ async function run(cap) {
     });
     stage.set("done");
     if (cfg.record && cap.source === "clip" && turns === 1 && r.text.trim()) {
-      fetch("/api/dev/replay", {
+      fetch("api/dev/replay", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -244,7 +271,7 @@ async function run(cap) {
   stage.emit("interpret:error", { lane: "cerebras", reason: r.reason, status: r.status });
   if (cap.source === "clip") {
     try {
-      const res = await fetch("/replays/" + cap.clip.replace(/\.wav$/, "") + ".json");
+      const res = await fetch("replays/" + cap.clip.replace(/\.wav$/, "") + ".json");
       if (res.ok && seq === runSeq) {
         const rec = await res.json();
         if (await playReplay(rec, performance.now() - t0)) return;
@@ -291,6 +318,10 @@ stage.on("intent:reply", guard(async (d) => {
   const text = String(d.text || "").trim();
   if (!text) return;
   stage.emit("reply:sent", { text });
+  if (cfg.demo) {
+    stage.emit("vocalize:error", { reason: "demo" });
+    return;
+  }
   const r = await vocalize({ text, species: stage.species, sessionId, pet });
   if (!r.ok) {
     stage.emit("vocalize:error", { reason: r.reason });
