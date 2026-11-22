@@ -44,8 +44,9 @@ One full-viewport stage, no dashboard columns:
    back to a different provider silently.
 2. **Theme**: light "field notebook". Warm paper, ink text, one signal colour
    per species.
-3. **Dependencies**: still no build step. GSAP core and SplitText are vendored
-   as plain files, the way the Codrops demos ship them.
+3. **Dependencies**: still no build step and no vendored libraries. Caption
+   motion is CSS plus `requestAnimationFrame`, with the mechanics ported from
+   the Codrops Voice Note effect (see `THIRD_PARTY.md`).
 
 ## File ownership
 
@@ -68,61 +69,48 @@ them; do not edit it.
 
 `public/style.css` is deleted by A in the scaffold commit.
 
-## Current status (updated 22 Nov, 08:02 UTC)
+## Current status (updated 22 Nov, 09:40 UTC)
 
-- **Trunk is `redesign-integration`**, not `redesign`. It is the only branch
-  with real captions, start screen and controls. All branches are pushed to
-  `origin`.
-- **Worktrees:** `babble-dev-a` holds `redesign-integration` and is the only
-  place merges into the trunk happen. Every other agent works in its own
-  worktree on a short-lived branch cut from `origin/redesign-integration`,
-  pushes it, and hands it over to be merged. Do not edit another worktree.
-- **Replays are recorded**: `public/replays/<clip>.json` exists for all five
-  demo clips (branch `redesign-replays`). To re-record, run
-  `BABBLE_RECORD=1 node server.mjs` against the real gateway and play each
-  demo clip; `app.js` posts the finished stream to `/api/dev/replay`. Record
-  mode raises the first-token budget from 12s to 180s. There is no
-  `scripts/record-replays.mjs`; the in-app record mode replaced it.
-- **First real end-to-end run** (real OpenClaw gateway, not the mock on 4399):
-  interpretation works, but the first token took 24-58s per clip and 3 of 8
-  attempts did not finish in 180s. Decode after the first token is about 0.6s.
-  With the normal 12s budget every live run falls back to REPLAY, and
-  talk-back (`/api/vocalize`, same 12s budget) times out.
-- **Where the wait comes from (measured 07:51-07:58 UTC):** the Cerebras
-  trial endpoint, not OpenClaw overhead. Direct calls to
-  `api.cerebras.ai` with a 137-token prompt got `429 queue_exceeded`
-  ("high traffic") 19 times in a row, then one request with a 40 s
-  server-side `queue_time`, then four that started in 0.5-2.6 s. OpenClaw
-  adds to it: it retries each 429 with growing backoff (1 s up to ~27 s
-  gaps), so the same trivial prompt through the gateway took 49-108 s to
-  first token. Once admitted, Cerebras generates 60 tokens in 0.06-0.16 s.
-  Probes: `/tmp/babble-direct-probe.mjs`, `/tmp/babble-gw-probe.mjs`.
-- **No OpenClaw setting shortens the retry gaps.** The backoff is hardcoded
-  in OpenClaw (`failover-retry-controller.ts`: 1 s base, doubling, 30 s cap,
-  90 s budget); `openclaw config schema` exposes nothing for it. We do not
-  patch OpenClaw.
-- **Window check for live takes:** `node scripts/cerebras-window.mjs` pings
-  Cerebras directly every 2 s and prints OPEN / SLOW / CLOSED. Start a live
-  take when it shows `<- go` (three fast answers in a row). In a 75 s sample
-  the endpoint was open for about 10 s, then closed for about 50 s.
-- **Known layout bug:** in the `done` state the header chip line is clipped
-  behind the caption and the first caption line scrolls out of view.
+- **Everything is merged to `main`.** `redesign-integration` and `redesign`
+  point at the same commit and are kept for history. The per-developer
+  branches are fully merged.
+- **Live OpenClaw config for agent `babble`:** the workspace is the main
+  checkout's `agent-workspace/`, `thinkingDefault: "low"`, `skills: []`,
+  tools `read`/`write`/`edit` confined to the workspace. The Cerebras model
+  entry declares `reasoning: true` with an effort map so `low` is actually
+  sent. Backups: `~/.openclaw/openclaw.json.bak-babble` and
+  `.bak-pre-submission`.
+- **Verified live on this build (08:58-09:07 UTC, real gateway):** all five
+  demo clips interpreted with an evidence line (wait 2.1-5.5 s, decode
+  0.17-0.46 s); a typed reply was vocalized in 2.3 s; the next capture
+  answered in context ("Six is entirely too late"); the session-end memory
+  write succeeded. In the same period two requests got no answer in 180 s
+  and one came back empty, so the trial queue is still unreliable.
+- **Replays are recorded with evidence** for all five clips
+  (`public/replays/`). They are real first-turn responses. To re-record, run
+  `BABBLE_RECORD=1 node server.mjs` and play each demo clip once after a page
+  reload; record mode raises the first-token budget from 12 s to 180 s,
+  records only the first interpretation of a page session, and refuses empty
+  responses.
+- **Where the wait comes from:** the Cerebras trial endpoint. Direct calls
+  alternate between about 10 s of normal answers and about 50 s of
+  `429 queue_exceeded`; OpenClaw retries each 429 with growing backoff
+  (hardcoded: 1 s base, doubling, 30 s cap, 90 s budget; no config setting).
+  We do not patch OpenClaw. `node scripts/cerebras-window.mjs` shows whether
+  the endpoint is admitting requests; start a live take on `<- go`.
+- **Failure handling:** 12 s without a first word (8 s mid-stream), an HTTP
+  error, or an empty answer falls back to the clip's labelled REPLAY; mic and
+  file captures show an error with Retry. Talk-back has no fallback.
+- **Not configured: the GPU race lane.** Agent `babble-gpu` needs
+  `NEBIUS_API_KEY` in the gateway's environment, a gateway restart, then
+  `scripts/setup-openclaw.sh`. Until then the race lane shows
+  "GPU rival offline (not configured)". The rival path is tested against a
+  mock only.
+- **Not tested:** a real microphone capture (automation has no mic).
+- **Checks:** `node scripts/devc-smoke.mjs`, `node scripts/devd-smoke.mjs`,
+  `node scripts/ribbon-evidence-test.mjs`.
 - **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
   `agent-workspace/memory/`) are gitignored.
-
-- **Review follow-ups merged** (section below): workspace-only prompt, real
-  OpenClaw sessions, per-pet memory, `EVIDENCE` line, rival lane on Nebius
-  GPUs, real token counts. The UI still has to show `evidence`, the pet name
-  field and the wait/decode labels (B and D tasks below).
-- **Live OpenClaw config for agent `babble`:** workspace
-  `babble-dev-a/agent-workspace` (the trunk), `thinkingDefault: "low"`,
-  `skills: []`, tools `read`/`write`/`edit` confined to the workspace. The
-  Cerebras model entry declares `reasoning: true` with an effort map so `low`
-  is actually sent. Backup: `~/.openclaw/openclaw.json.bak-babble`. Agent
-  `babble-gpu` is not configured yet: it needs `NEBIUS_API_KEY` in the
-  gateway's environment, a gateway restart, then `scripts/setup-openclaw.sh`.
-- **Recorded replays predate the `EVIDENCE` line**, so their `evidence` is
-  `null`. Re-record them to show evidence on REPLAY.
 
 ## Review follow-ups (M2.5)
 
@@ -155,24 +143,10 @@ also done in `ribbon.js`, `telemetry.js`, `controls.js`, `captions.js`,
 table below: `evidence`, `tokensEstimated`, `reasoningTokens`, `tpsEstimated`,
 `intent:pet`, and lane `"groq"` renamed `"rival"`.
 
-UI work, by owner:
-
-- **B, ribbon:** draw the `evidence` string as an annotation on the ribbon,
-  next to the call brackets it refers to, so the measurement and the word
-  sit together. Rename lane `"groq"` to `"rival"` in `ribbon.js`.
-- **B, telemetry:** decode time is the large figure; tok/s smaller with
-  `est.` when estimated; "wait", not "queue"; show `+ N thinking tokens`.
-  Rename lane `"groq"` to `"rival"` in `telemetry.js` (brief updated).
-- **D, captions:** under the header row, the `evidence` line in mono at
-  `--step--1`, `--ink-2`. Race lanes per the updated brief. Rename lane in
-  `captions.js` and `captions.css`.
-- **D, controls:** a small "Name" field beside the species switcher that
-  emits `intent:pet { name }` on Enter or blur; prefill from
-  `localStorage["babble.pet." + species]`. Race switch label "Race a GPU";
-  rename lane in `controls.js`.
-- **D, start screen:** the one-sentence pitch must not promise speed relative
-  to the sound. Use: "Point a mic at your pet. Babble measures the sound and
-  tells you what it meant."
+UI work from the review, all done on `main`: the evidence line in captions
+and as a marker on the ribbon; decode time as the telemetry headline with
+wait shown apart and `est.` on estimated rates; the pet name field; the
+"Race a GPU" switch; and a start-screen sentence that makes no speed promise.
 
 Demo video (60 s), so a viewer sees the sound drive the words:
 

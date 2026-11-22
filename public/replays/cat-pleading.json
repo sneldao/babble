@@ -3,32 +3,65 @@
   "species": "cat",
   "header": {
     "vocal": "protest",
-    "mood": "irritated",
-    "confidence": 0.88
+    "mood": "annoyed insistent",
+    "confidence": 0.89,
+    "evidence": "4 calls; falling segments lasting 848-1781 ms; median f0 558 Hz"
   },
   "deltas": [
     {
-      "tMs": 0.10000000149011612,
-      "text": "Enough. I have made myself clear four"
+      "tMs": 0,
+      "text": "You"
     },
     {
-      "tMs": 107,
-      "text": " times"
+      "tMs": 6.199999995529652,
+      "text": " are"
     },
     {
-      "tMs": 140.29999999701977,
-      "text": ". Stop"
+      "tMs": 10.299999997019768,
+      "text": " still"
     },
     {
-      "tMs": 142.69999999552965,
-      "text": " testing"
+      "tMs": 12.299999997019768,
+      "text": " ignoring"
     },
     {
-      "tMs": 146.69999999552965,
-      "text": " my patience and attend to me."
+      "tMs": 17.5,
+      "text": " me."
+    },
+    {
+      "tMs": 20.5,
+      "text": " Fix"
+    },
+    {
+      "tMs": 25.69999999552965,
+      "text": " whatever"
+    },
+    {
+      "tMs": 34.29999999701977,
+      "text": " this"
+    },
+    {
+      "tMs": 36.899999998509884,
+      "text": " is"
+    },
+    {
+      "tMs": 38.79999999701977,
+      "text": ","
+    },
+    {
+      "tMs": 50.099999994039536,
+      "text": " right"
+    },
+    {
+      "tMs": 51.5,
+      "text": " now"
+    },
+    {
+      "tMs": 55.099999994039536,
+      "text": "."
     }
   ],
-  "queueMs": 49286.20000000298,
-  "decodeMs": 1316.7999999970198,
-  "recordedAt": "2026-11-22T07:36:57.479Z"
+  "queueMs": 2849.2999999970198,
+  "decodeMs": 221.10000000149012,
+  "recordedAt": "2026-11-22T09:00:05.598Z"
 }

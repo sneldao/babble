@@ -2,41 +2,54 @@
   "clip": "cat-meow.wav",
   "species": "cat",
   "header": {
-    "vocal": "protest",
-    "mood": "thoroughly annoyed",
-    "confidence": 0.86
+    "vocal": "distress",
+    "mood": "distressed, urgent",
+    "confidence": 0.9,
+    "evidence": "single loud 1.149 s call; rms_mean 0.194; wide f0 range 166-1000 Hz with falling contour"
   },
   "deltas": [
     {
-      "tMs": 0.29999999701976776,
-      "text": "You"
+      "tMs": 0,
+      "text": "No more waiting—"
     },
     {
-      "tMs": 30.19999999552965,
-      "text": " have"
+      "tMs": 7.600000001490116,
+      "text": "something"
     },
     {
-      "tMs": 54.29999999701977,
-      "text": " ignored me"
-    },
-    {
-      "tMs": 57.69999999552965,
-      "text": " four times. Attend to me now; my patience"
-    },
-    {
-      "tMs": 59.79999999701977,
+      "tMs": 71.10000000149012,
       "text": " is"
     },
     {
-      "tMs": 60.899999998509884,
-      "text": " officially gone"
+      "tMs": 72.29999999701977,
+      "text": " wrong"
     },
     {
-      "tMs": 70.69999999552965,
+      "tMs": 74.79999999701977,
+      "text": "!"
+    },
+    {
+      "tMs": 77.89999999850988,
+      "text": " Come"
+    },
+    {
+      "tMs": 79,
+      "text": " to"
+    },
+    {
+      "tMs": 79.89999999850988,
+      "text": " me,"
+    },
+    {
+      "tMs": 80.89999999850988,
+      "text": " now"
+    },
+    {
+      "tMs": 83,
       "text": "."
     }
   ],
-  "queueMs": 24125.59999999404,
-  "decodeMs": 600.7000000029802,
-  "recordedAt": "2026-11-22T07:37:35.553Z"
+  "queueMs": 13489.60000000149,
+  "decodeMs": 283.29999999701977,
+  "recordedAt": "2026-11-22T09:06:29.974Z"
 }

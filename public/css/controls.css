@@ -286,7 +286,11 @@
 }
 
 @media (min-width: 1200px) and (max-width: 1599.98px) {
-  #controls { padding-left: 12px; padding-right: 12px; }
+  #controls { padding-left: 8px; padding-right: 8px; }
+  .ctl-main { gap: 8px; }
+  .ctl-group + .ctl-group { padding-left: 8px; }
+  .ctl-send { padding: 0 14px; }
+  .ctl-listen { padding: 0 12px; }
   .ctl-pet-lbl { display: none; }
-  .ctl-pet-in { width: 6ch; }
+  .ctl-pet-in { width: 10ch; padding: 0 6px; }
 }

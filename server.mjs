@@ -388,6 +388,7 @@ async function handleDevReplay(req, res) {
     tMs: Math.max(0, Number(d.tMs) || 0),
     text: String(d.text ?? "").slice(0, 200),
   }));
+  if (!clean.map((d) => d.text).join("").trim()) return res.writeHead(400).end("empty replay");
   const header = body.header && typeof body.header === "object" ? body.header : {};
   const record = {
     clip,

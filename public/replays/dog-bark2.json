@@ -2,41 +2,74 @@
   "clip": "dog-bark2.wav",
   "species": "dog",
   "header": {
-    "vocal": "play",
-    "mood": "eager",
-    "confidence": 0.7
+    "vocal": "alarm",
+    "mood": "insistent alert",
+    "confidence": 0.78,
+    "evidence": "4 calls with short gaps; median f0 364 Hz; high spectral centroid 2483 Hz"
   },
   "deltas": [
     {
       "tMs": 0,
-      "text": "That’s"
+      "text": "It’s"
     },
     {
-      "tMs": 331.3999999985099,
-      "text": " my"
+      "tMs": 4,
+      "text": " still"
     },
     {
-      "tMs": 390,
-      "text": " play bark again!"
+      "tMs": 5.600000001490116,
+      "text": " happening"
     },
     {
-      "tMs": 398.3999999985099,
-      "text": " Come on, come on"
+      "tMs": 10.5,
+      "text": "! I told you"
     },
     {
-      "tMs": 423.5,
-      "text": "—"
+      "tMs": 11.300000004470348,
+      "text": ","
     },
     {
-      "tMs": 428.79999999701977,
-      "text": "grab a toy"
+      "tMs": 18.400000005960464,
+      "text": " and"
     },
     {
-      "tMs": 438,
-      "text": " and chase me!"
+      "tMs": 23,
+      "text": " I"
+    },
+    {
+      "tMs": 27.5,
+      "text": "’m telling"
+    },
+    {
+      "tMs": 30.700000002980232,
+      "text": " you"
+    },
+    {
+      "tMs": 34.600000001490116,
+      "text": " again—come"
+    },
+    {
+      "tMs": 50.80000000447035,
+      "text": " over here"
+    },
+    {
+      "tMs": 51.5,
+      "text": " and"
+    },
+    {
+      "tMs": 53.5,
+      "text": " check"
+    },
+    {
+      "tMs": 56.80000000447035,
+      "text": " it with"
+    },
+    {
+      "tMs": 62.5,
+      "text": " me!"
     }
   ],
-  "queueMs": 40096,
-  "decodeMs": 6495.9000000059605,
-  "recordedAt": "2026-11-22T07:46:51.385Z"
+  "queueMs": 2454.60000000149,
+  "decodeMs": 209.5,
+  "recordedAt": "2026-11-22T08:59:11.883Z"
 }

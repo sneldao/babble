@@ -3,36 +3,73 @@
   "species": "cat",
   "header": {
     "vocal": "distress",
-    "mood": "urgent distress",
-    "confidence": 0.69
+    "mood": "distressed, insistent",
+    "confidence": 0.79,
+    "evidence": "7 calls; warbled contour; f0 range 80-1000 Hz across 10.635 s"
   },
   "deltas": [
     {
-      "tMs": 0.10000000149011612,
-      "text": "Enough. I"
+      "tMs": 0,
+      "text": "Something is still wrong, and"
     },
     {
-      "tMs": 53.100000001490116,
+      "tMs": 8.099999994039536,
+      "text": " I"
+    },
+    {
+      "tMs": 12.399999998509884,
+      "text": " am not"
+    },
+    {
+      "tMs": 18.399999998509884,
+      "text": " letting this"
+    },
+    {
+      "tMs": 28,
+      "text": " go"
+    },
+    {
+      "tMs": 30.5,
+      "text": "."
+    },
+    {
+      "tMs": 38.79999999701977,
+      "text": " Come"
+    },
+    {
+      "tMs": 40.19999999552965,
+      "text": " here"
+    },
+    {
+      "tMs": 43.399999998509884,
+      "text": "—you"
+    },
+    {
+      "tMs": 53.399999998509884,
       "text": " have"
     },
     {
-      "tMs": 66.60000000149012,
-      "text": " asked"
+      "tMs": 56.29999999701977,
+      "text": " kept"
     },
     {
-      "tMs": 77.5,
-      "text": " and asked; stop"
+      "tMs": 65.69999999552965,
+      "text": " me waiting"
     },
     {
-      "tMs": 82.69999999552965,
-      "text": " ignoring me and come check on"
+      "tMs": 66.89999999850988,
+      "text": " long"
     },
     {
-      "tMs": 91.29999999701977,
-      "text": " me now."
+      "tMs": 69.5,
+      "text": " enough"
+    },
+    {
+      "tMs": 72.19999999552965,
+      "text": "."
     }
   ],
-  "queueMs": 27576.39999999851,
-  "decodeMs": 554.2000000029802,
-  "recordedAt": "2026-11-22T07:38:09.604Z"
+  "queueMs": 2283,
+  "decodeMs": 216.39999999850988,
+  "recordedAt": "2026-11-22T08:59:01.685Z"
 }

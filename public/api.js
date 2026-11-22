@@ -106,6 +106,7 @@ export function interpret(payload, { lane = "cerebras", budgetMs = 12000, stallM
     clearInterval(watchdog);
     if (errorPayload) return { ok: false, reason: "http", status: errorPayload.status ?? null };
     if (!donePayload) return { ok: false, reason: "network", status: null };
+    if (!body.trim()) return { ok: false, reason: "empty", status: null };
     if (!headerFired) fireHeader({ vocal: null, mood: null, confidence: null, evidence: null });
     const now = performance.now();
     const queueMs = firstContentAt === null ? now - t0 : firstContentAt - t0;

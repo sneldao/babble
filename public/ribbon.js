@@ -81,6 +81,36 @@ function shapeCurve(shape, t) {
   }
 }
 
+// Parse an evidence citation into the marks the pitch axis should show:
+// a single line for a lone f0 value, a band for a cited range, and the
+// call count for bracket emphasis. "centroid"/"spectral" values are not
+// on the pitch line; ms/s numbers are ignored.
+export function parseEvidence(str) {
+  const out = { line: null, band: null, calls: null };
+  if (!str) return out;
+  const clamp = (v) => Math.min(FMAX, Math.max(FMIN, v));
+  const ctx = (i) => str.slice(Math.max(0, i - 30), i);
+  const offPitch = (i) => /centroid|spectral/i.test(ctx(i));
+  const rge = /(\d{2,4})\s*[–-]\s*(\d{2,4})\s*Hz/gi;
+  let m;
+  while ((m = rge.exec(str))) {
+    if (!offPitch(m.index)) { out.band = [clamp(+m[1]), clamp(+m[2])]; break; }
+  }
+  const one = /(\d{2,4})\s*Hz/gi;
+  while ((m = one.exec(str))) {
+    const start = m.index, end = m.index + m[1].length;
+    if (offPitch(start)) continue;                       // not on the pitch line
+    if (/[–-]\s*$/.test(str.slice(0, start))) continue;  // range end
+    if (/^\s*[–-]\s*\d{2,4}\s*Hz/i.test(str.slice(end))) continue; // range start
+    out.line = clamp(+m[1]);
+    break;
+  }
+  const c = str.match(/(?<![\d.])(\d+)(?:\s+\w+){0,2}?\s+calls?/i);
+  if (c) out.calls = +c[1];
+  else if (/\b(?:single|one|a)\b[^;]{0,30}?\bcalls?\b/i.test(str)) out.calls = 1;
+  return out;
+}
+
 export function mount(el, stage) {
   const canvas = document.createElement("canvas");
   canvas.className = "ribbon-canvas";
@@ -307,6 +337,19 @@ export function mount(el, stage) {
     const ax = axisMs();
     const pw = plotW(), ph = plotH();
 
+    // Broken-axis layout: the capture always owns ≥72% of the plot; late
+    // arrivals live in a fixed-width hatched zone, not on the time axis.
+    const durMsZ = S.capture?.durationMs || 0;
+    const zoneOn = !!(S.capture && !S.talk && ax > durMsZ + 1);
+    const zoneW = zoneOn ? Math.min(Math.max(120, pw * 0.28), pw * 0.35) : 0;
+    const capW = pw - zoneW;
+    const zoneX = PAD.l + capW;              // zone's left edge (incl. 14px break)
+    const zoneMarksX = zoneX + 14;           // marks space inside the zone
+    const xForZ = (ms) => ms <= durMsZ
+      ? PAD.l + (capW * ms) / Math.max(1, durMsZ)
+      : zoneMarksX + ((ms - durMsZ) / Math.max(1, ax - durMsZ)) * (PAD.l + pw - 6 - zoneMarksX);
+    const xLin = zoneOn ? xForZ : (ms) => PAD.l + (pw * ms) / ax;
+
     // Species range band (behind the signal so calls land visibly inside it).
     const sp = SPECIES[S.species] || SPECIES.cat;
     if (sp?.rangeHz) {
@@ -328,33 +371,42 @@ export function mount(el, stage) {
     ctx.save();
     if (S.talk) ctx.globalAlpha = 0.25; // reply view: capture recedes
     if (S.specImg) {
-      const sw = (pw * S.specDurMs) / ax;
+      const sw = zoneOn ? (capW * S.specDurMs) / Math.max(1, durMsZ) : (pw * S.specDurMs) / ax;
       ctx.drawImage(S.specImg, PAD.l, PAD.t, Math.max(1, sw), ph);
     } else if (S.liveImg && S.capture) {
-      const sw = (pw * S.capture.durationMs) / ax;
+      const sw = zoneOn ? capW : (pw * S.capture.durationMs) / ax;
       ctx.drawImage(S.liveImg, PAD.l, PAD.t, Math.max(1, sw), ph);
     }
     ctx.restore();
 
-    // After-the-sound zone: axis extended past the capture by slow arrivals.
-    const durMs = S.capture?.durationMs || 0;
-    if (S.capture && ax > durMs + 1) {
-      const x0 = xFor(durMs), x1 = PAD.l + pw;
+    // After-the-sound zone: a fixed-width hatched strip past a broken axis,
+    // so a late answer never shrinks the sound itself.
+    if (zoneOn) {
+      const x0 = zoneX, x1 = PAD.l + pw;
       ctx.save();
-      ctx.beginPath(); ctx.rect(x0, PAD.t, x1 - x0, ph); ctx.clip();
+      ctx.beginPath(); ctx.rect(x0 + 14, PAD.t, x1 - x0 - 14, ph); ctx.clip();
       ctx.fillStyle = "rgba(28,26,23,0.06)";
       ctx.fillRect(x0, PAD.t, x1 - x0, ph);
       ctx.strokeStyle = C.rule;
       ctx.lineWidth = 1;
-      for (let x = x0 - ph; x < x1; x += 7) {
+      for (let x = x0 - ph + 14; x < x1; x += 7) {
         ctx.beginPath();
         ctx.moveTo(x, PAD.t + ph); ctx.lineTo(x + ph, PAD.t);
         ctx.stroke();
       }
       ctx.restore();
+      // Axis break: "//" through the plot at the capture boundary.
+      ctx.strokeStyle = C.ink2;
+      ctx.lineWidth = 1;
+      for (const dx of [4, 10]) {
+        ctx.beginPath();
+        ctx.moveTo(x0 + dx - 2, PAD.t + ph + 12);
+        ctx.lineTo(x0 + dx + 4, PAD.t);
+        ctx.stroke();
+      }
       ctx.fillStyle = C.ink2;
       ctx.font = `10px ${MONO}`;
-      ctx.fillText("after the sound", Math.min(x0 + 4, x1 - 92), PAD.t + 12);
+      ctx.fillText("after the sound", x0 + 16, PAD.t + 12);
     }
 
     // Loudness envelope strip along the bottom edge.
@@ -362,10 +414,10 @@ export function mount(el, stage) {
     if (track?.rms?.length) {
       const maxR = Math.max(0.001, ...track.rms);
       ctx.fillStyle = "rgba(28,26,23,0.30)";
-      const bw = pw / track.rms.length;
+      const bw = (zoneOn ? capW : pw) / track.rms.length;
       for (let i = 0; i < track.rms.length; i++) {
         const bh = Math.max(1, (track.rms[i] / maxR) * 13);
-        const x = PAD.l + (pw * i * track.hopMs) / ax;
+        const x = xLin(i * track.hopMs);
         ctx.fillRect(x, PAD.t + ph - bh, Math.max(1, bw), bh);
       }
     }
@@ -392,7 +444,7 @@ export function mount(el, stage) {
         const f0 = track.f0[i];
         if (!f0 || (prev && (f0 > prev * 1.35 || f0 < prev / 1.35))) { flush(); prev = f0; continue; }
         prev = f0;
-        const x = PAD.l + (pw * i * track.hopMs) / ax;
+        const x = xLin(i * track.hopMs);
         run.push([x, yFor(f0)]);
         voicedAt += i * track.hopMs; voicedN++;
       }
@@ -401,7 +453,7 @@ export function mount(el, stage) {
       if (med && voicedN) {
         ctx.fillStyle = C.signal;
         ctx.beginPath();
-        ctx.arc(PAD.l + (pw * (voicedAt / voicedN)) / ax, yFor(med), 3.5, 0, 7);
+        ctx.arc(xLin(voicedAt / voicedN), yFor(med), 3.5, 0, 7);
         ctx.fill();
       }
     }
@@ -415,8 +467,8 @@ export function mount(el, stage) {
 
     // Evidence citations from the cerebras header: a cited frequency lands as
     // a marker on the pitch axis, a cited call count emphasises brackets.
-    const evHz = S.evidence?.match(/(\d{2,4})\s*Hz/i)?.[1];
-    const evCalls = S.evidence?.match(/(\d+)\s*calls?/i)?.[1];
+    const ev = parseEvidence(S.evidence || "");
+    const evCalls = ev.calls != null ? String(ev.calls) : null;
 
     // Segment call brackets. Labels stagger across rows so adjacent calls
     // stay legible; on narrow plots they fall back to a compact form.
@@ -430,8 +482,8 @@ export function mount(el, stage) {
       const items = segs.slice(0, 8).map((sg, i) => {
         const label = textOf(sg, i);
         const tw = ctx.measureText(label).width;
-        const x0 = xFor(sg.startMs ?? 0), x1 = xFor(sg.endMs ?? sg.durMs ?? 0);
-        const lx = Math.min(Math.max(PAD.l, (x0 + x1 - tw) / 2), PAD.l + pw - tw);
+        const x0 = xLin(sg.startMs ?? 0), x1 = xLin(sg.endMs ?? sg.durMs ?? 0);
+        const lx = Math.min(Math.max(PAD.l, (x0 + x1 - tw) / 2), PAD.l + (zoneOn ? capW : pw) - tw);
         let row = 0;
         while (rows.some((p) => p.row === row && lx < p.x1 + 6 && lx + tw + 6 > p.x)) row++;
         rows.push({ row, x: lx, x1: lx + tw });
@@ -444,7 +496,7 @@ export function mount(el, stage) {
     if (worst > 2) ({ items } = pack(compact)); // narrow plot: short labels
     const emphasise = evCalls != null && +evCalls === segs.length && +evCalls > 0 ? +evCalls : 0;
     for (const { sg, i, label, lx, row } of items) {
-      const x0 = xFor(sg.startMs ?? 0), x1 = xFor(sg.endMs ?? sg.durMs ?? 0);
+      const x0 = xLin(sg.startMs ?? 0), x1 = xLin(sg.endMs ?? sg.durMs ?? 0);
       const y = PAD.t + ph + 22;
       ctx.strokeStyle = C.ink;
       ctx.lineWidth = 1;
@@ -457,18 +509,35 @@ export function mount(el, stage) {
       ctx.fillText(label, lx, y + 11 + Math.min(row, 1) * 11);
     }
 
-    // Cited frequency: a faint full-width tick on the pitch axis + mono label.
-    if (evHz != null) {
-      const y = yFor(+evHz);
+    // Cited frequencies: a faint full-width tick per value, a translucent
+    // band for a cited f0 range, each with a mono label at the right edge.
+    ctx.font = `10px ${MONO}`;
+    if (ev.band) {
+      const [a, b] = ev.band;
+      const y0 = yFor(b), y1 = yFor(a);
+      ctx.save();
+      ctx.globalAlpha = 0.1;
+      ctx.fillStyle = C.signal;
+      ctx.fillRect(PAD.l, y0, pw, y1 - y0);
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(PAD.l, y0, pw, 1);
+      ctx.fillRect(PAD.l, y1 - 1, pw, 1);
+      ctx.restore();
+      const lbl = `${a}–${b} Hz`;
+      const lw = ctx.measureText(lbl).width;
+      ctx.fillStyle = C.signal;
+      ctx.fillText(lbl, PAD.l + pw - lw - 4, y1 + 10);
+    }
+    if (ev.line != null) {
+      const y = yFor(ev.line);
       if (y > PAD.t + 6 && y < PAD.t + ph - 4) {
         ctx.save();
         ctx.globalAlpha = 0.35;
         ctx.fillStyle = C.signal;
         ctx.fillRect(PAD.l, y - 1, pw, 2);
         ctx.restore();
-        const lbl = `${+evHz} Hz`;
+        const lbl = `${ev.line} Hz`;
         const lw = ctx.measureText(lbl).width;
-        ctx.font = `10px ${MONO}`;
         ctx.fillStyle = C.signal;
         ctx.fillText(lbl, PAD.l + pw - lw - 4, y - 5);
       }
@@ -481,25 +550,23 @@ export function mount(el, stage) {
     // sound" zone label so far-right mark labels (e.g. a long "… · replay"
     // one) drop below them instead of overprinting.
     const markPlaced = [{ x: rightX - 6, x1: w - 6 }];
-    const durMs0 = S.capture?.durationMs || 0;
-    if (S.capture && ax > durMs0 + 1) {
-      const zx = Math.min(xFor(durMs0) + 4, PAD.l + pw - 92);
-      markPlaced.push({ x: zx - 6, x1: zx + 96 });
-    }
+    if (zoneOn) markPlaced.push({ x: zoneX + 10, x1: zoneX + 112 });
     const markGroups = [];
     for (const m of [...S.marks].sort((a, b) => a.ms - b.ms)) {
-      const x = xFor(m.ms);
+      const x = xLin(m.ms);
       const last = markGroups[markGroups.length - 1];
-      if (last && m.lane === last[0].lane && Math.abs(x - xFor(last[last.length - 1].ms)) < 90) last.push(m);
+      if (last && m.lane === last[0].lane && Math.abs(x - xLin(last[last.length - 1].ms)) < 90) last.push(m);
       else markGroups.push([m]);
     }
-    for (const grp of markGroups) {
+    // Dots first, labels second: a later group's dot must not land inside an
+    // earlier label's tail, so every dot joins the collision set.
+    const dots = markGroups.map((grp) => grp.map((m) => xLin(m.ms)));
+    markGroups.forEach((grp, gi) => {
       const col = grp[0].lane === "rival" ? C.rival : C.ink;
       const replay = grp[0].replay;
       ctx.strokeStyle = col;
       ctx.lineWidth = 1;
-      for (const m of grp) {
-        const x = xFor(m.ms);
+      for (const x of dots[gi]) {
         if (replay) ctx.setLineDash([4, 3]);
         ctx.beginPath();
         ctx.moveTo(x, PAD.t + 14); ctx.lineTo(x, PAD.t + ph);
@@ -510,6 +577,17 @@ export function mount(el, stage) {
         if (replay) { ctx.strokeStyle = col; ctx.stroke(); }
         else { ctx.fillStyle = col; ctx.fill(); }
       }
+      if (grp.length > 1) {
+        const x0 = dots[gi][0], x1 = dots[gi][dots[gi].length - 1];
+        ctx.beginPath();
+        ctx.moveTo(x0, PAD.t + 18); ctx.lineTo(x1, PAD.t + 18);
+        ctx.strokeStyle = col;
+        ctx.stroke();
+      }
+    });
+    markGroups.forEach((grp, gi) => {
+      const col = grp[0].lane === "rival" ? C.rival : C.ink;
+      const replay = grp[0].replay;
       ctx.fillStyle = col;
       ctx.font = `10px ${MONO}`;
       let label, lx, tw;
@@ -517,28 +595,25 @@ export function mount(el, stage) {
         const t0 = (grp[0].ms / 1000).toFixed(2), t1 = (grp[grp.length - 1].ms / 1000).toFixed(2);
         label = `words ${t0}–${t1} s` + (replay ? " · replay" : "");
         tw = ctx.measureText(label).width;
-        const x0 = xFor(grp[0].ms), x1 = xFor(grp[grp.length - 1].ms);
+        const x0 = dots[gi][0], x1 = dots[gi][dots[gi].length - 1];
         lx = Math.min(Math.max(PAD.l + 2, (x0 + x1) / 2 - tw / 2), PAD.l + pw - tw);
-        ctx.beginPath();
-        ctx.moveTo(x0, PAD.t + 18); ctx.lineTo(x1, PAD.t + 18);
-        ctx.strokeStyle = col;
-        ctx.stroke();
       } else {
         const m = grp[0];
         label = `${m.kind === "first" ? "first word" : "last word"}` +
           (m.lane === "rival" ? " · gpu" : "") + (m.replay ? " · replay" : "");
         tw = ctx.measureText(label).width;
-        lx = Math.min(Math.max(PAD.l + 2, xFor(m.ms) + 6), PAD.l + pw - tw);
+        lx = Math.min(Math.max(PAD.l + 2, dots[gi][0] + 6), PAD.l + pw - tw);
       }
       let drop = 0;
-      if (markPlaced.some((p) => lx < p.x1 + 4 && lx + tw + 4 > p.x)) drop = 12;
+      const otherDots = dots.flatMap((xs, j) => j === gi ? [] : xs.map((x) => ({ x: x - 4, x1: x + 4 })));
+      if (markPlaced.concat(otherDots).some((p) => lx < p.x1 + 4 && lx + tw + 4 > p.x)) drop = 12;
       // Marks near the left edge: sit below the title line and to the right
       // of the mark, clear of the y-axis frequency labels.
       const leftEdge = lx < PAD.l + 56;
       const ly = PAD.t + (leftEdge ? 22 : 9) + drop;
       markPlaced.push({ x: lx, x1: lx + tw });
       ctx.fillText(label, lx, ly);
-    }
+    });
 
     // Talk-back view: reply syllables own the plot on their own time axis.
     if (S.talk) {
@@ -583,18 +658,19 @@ export function mount(el, stage) {
       ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + pw, y); ctx.stroke();
       ctx.fillText(fmtHz(hz), 8, y + 3);
     }
-    const step = ax > 9000 ? 2000 : ax > 4500 ? 1000 : TIME_STEP_MS;
-    const steps = Math.floor(ax / step);
+    const timeAx = zoneOn ? durMsZ : ax;
+    const step = timeAx > 9000 ? 2000 : timeAx > 4500 ? 1000 : TIME_STEP_MS;
+    const steps = Math.floor(timeAx / step);
     for (let i = 0; i <= steps; i++) {
       const t = i * step;
-      const x = xFor(t);
+      const x = xLin(t);
       ctx.beginPath(); ctx.moveTo(x, PAD.t + 14); ctx.lineTo(x, PAD.t + ph); ctx.stroke();
       ctx.fillText(`${(t / 1000).toFixed(1)}s`, x - 8, PAD.t + ph + 10);
     }
 
     // Live playhead (suppressed under reduced motion).
     if (!RM && S.playP >= 0 && S.capture) {
-      const x = PAD.l + (pw * S.capture.durationMs * S.playP) / ax;
+      const x = zoneOn ? PAD.l + capW * S.playP : PAD.l + (pw * S.capture.durationMs * S.playP) / ax;
       ctx.strokeStyle = C.signal;
       ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, PAD.t + 14); ctx.lineTo(x, PAD.t + ph); ctx.stroke();
