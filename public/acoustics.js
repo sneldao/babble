@@ -232,15 +232,21 @@ function pitchCandidates(w, sr, mag) {
   for (const c of keep) for (const m of [1, 2, 3]) if (c.f * m <= 1000) pool.push(c.f * m);
   let top = 0;
   const scored = pool.map((f) => {
-    let sum = 0;
-    for (let h = 1; h <= NH; h++) sum += at(h * f);
+    let sum = 0, odd = 0, even = 0;
+    for (let h = 1; h <= 6; h++) {
+      const a = at(h * f);
+      if (h <= NH) sum += a;
+      if (h & 1) odd += a;
+      else even += a;
+    }
     if (sum > top) top = sum;
-    return { f, sum };
+    // energy only on the even harmonics means the real pitch is an octave up
+    return { f, sum, half: odd < HALF_RATIO * even };
   });
   if (top <= 0) return null;
   // no cost within TIE of the best sum; a slight lean towards the higher pitch
   const fmax = Math.max(...scored.map((c) => c.f));
-  return scored.map((c) => ({ f: c.f, cost: CA * Math.max(0, 1 - c.sum / (TIE * top)) + 0.05 * Math.log2(fmax / c.f) }));
+  return scored.map((c) => ({ f: c.f, cost: CA * Math.max(0, 1 - c.sum / (TIE * top)) + (c.half ? CA : 0) + 0.05 * Math.log2(fmax / c.f) }));
 }
 
 const CA = 4, CB = 5;
@@ -277,7 +283,7 @@ function trackPitch(frames, cands) {
 }
 
 const NOISE_K = 2;
-const FFT_N = 4096, TOP_HZ = 5000, NH = 5, TIE = 0.85;
+const FFT_N = 4096, TOP_HZ = 5000, NH = 5, TIE = 0.85, HALF_RATIO = 0.3;
 // FFT_N samples centred on `mid`, zero where the clip ends
 function longFrame(pcm, mid) {
   const out = new Float32Array(FFT_N), from = mid - (FFT_N >> 1);
