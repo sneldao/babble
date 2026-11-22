@@ -5,8 +5,10 @@ import { mount as mountCharacter } from "./character.js";
 import { mount as mountCaptions } from "./captions.js";
 import { mount as mountStart } from "./start.js";
 import { mount as mountControls } from "./controls.js";
+import { mount as mountSnapshot } from "./snapshot.js";
+import { mount as mountDropzone } from "./dropzone.js";
 import { interpret, vocalize } from "./api.js";
-import { decode, playBuffer } from "./audio.js";
+import { decode, playBuffer, loudestWindow } from "./audio.js";
 import { analyzeBuffer, captureMic } from "./acoustics.js";
 import { playScript } from "./synth.js";
 
@@ -16,6 +18,8 @@ mountCharacter(document.getElementById("character"), stage);
 mountCaptions(document.getElementById("captions"), stage);
 mountStart(document.getElementById("start"), stage);
 mountControls(document.getElementById("controls"), stage);
+mountSnapshot(document.getElementById("character"), stage);
+mountDropzone(stage);
 
 let cfg = {};
 try {
@@ -140,11 +144,116 @@ async function captureMicRun(secs) {
   return { source: "mic", buffer };
 }
 
+// ---------- uploaded media ----------
+let portrait = null;   // { dataUrl } from a photo upload; sent with every sound
+let mediaUrl = null;   // object URL of the current video upload
+
+function clearMedia() {
+  if (mediaUrl) { URL.revokeObjectURL(mediaUrl); mediaUrl = null; }
+  portrait = null;
+  stage.emit("media:clear");
+}
+
+function fileKind(file) {
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  if (file.type.startsWith("video/") || ["mp4", "mov", "m4v", "webm"].includes(ext)) return "video";
+  if (file.type.startsWith("image/")) return "photo";
+  return "audio";
+}
+
 async function captureFile(file) {
-  const buffer = await decode(await file.arrayBuffer());
+  const kind = fileKind(file);
+  if (file.size > 200 * 1024 * 1024) {
+    stage.set("error", { reason: "toobig" });
+    return null;
+  }
+
+  if (kind === "photo") {
+    const dataUrl = await new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = () => {
+        const w = Math.min(480, im.naturalWidth);
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = Math.round(w * (im.naturalHeight / im.naturalWidth));
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/jpeg", 0.6));
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      im.src = url;
+    });
+    if (!dataUrl) {
+      stage.set("error", { reason: "format" });
+      return null;
+    }
+    clearMedia();
+    portrait = { dataUrl };
+    const sent = !cfg.demo && cfg.vision !== false;
+    stage.emit("media:set", { kind: "photo", url: dataUrl, name: file.name });
+    stage.emit("media:frame", { dataUrl, tMs: null, sent, demo: !!cfg.demo });
+    return null;
+  }
+
+  let buffer;
+  try {
+    buffer = await decode(await file.arrayBuffer());
+  } catch {
+    stage.set("error", { reason: kind === "video" ? "nosound" : "format" });
+    return null;
+  }
+  const win = loudestWindow(buffer, 12);
+  const cap = { source: "file", buffer: win.buffer, kind, file };
+  if (win.fromSec > 0 || buffer.duration > 12) cap.window = win;
+
+  if (kind === "video") {
+    clearMedia();
+    mediaUrl = URL.createObjectURL(file);
+    stage.emit("media:set", { kind: "video", url: mediaUrl, name: file.name, fromSec: win.fromSec });
+  }
+  const { analyser, startedAt, durationMs } = playBuffer(win.buffer);
   stage.set("listening");
-  stage.emit("capture:start", { source: "file", analyser: null, startedAt: performance.now(), durationMs: buffer.duration * 1000 });
-  return { source: "file", buffer };
+  stage.emit("capture:start", { source: "file", analyser, startedAt, durationMs });
+  return cap;
+}
+
+// The loudest-moment frame of an uploaded video: a detached seek + grab,
+// bounded at 1500 ms; on failure the run just proceeds without an image.
+async function grabVideoFrame(file, fromSec, tMs) {
+  const url = URL.createObjectURL(file);
+  try {
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.src = url;
+    await new Promise((resolve, reject) => {
+      const to = setTimeout(() => reject(new Error("video load")), 1500);
+      v.onloadeddata = () => { clearTimeout(to); resolve(); };
+      v.onerror = () => { clearTimeout(to); reject(new Error("video load")); };
+    });
+    const dataUrl = await new Promise((resolve) => {
+      const to = setTimeout(() => resolve(null), 1500);
+      v.onseeked = () => {
+        clearTimeout(to);
+        try {
+          const w = Math.min(480, v.videoWidth || 480);
+          const c = document.createElement("canvas");
+          c.width = w;
+          c.height = Math.round(w * ((v.videoHeight || 360) / (v.videoWidth || 480)));
+          c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+          resolve(c.toDataURL("image/jpeg", 0.6));
+        } catch { resolve(null); }
+      };
+      v.currentTime = Math.min(fromSec + tMs / 1000, Math.max(0, (v.duration || 0) - 0.05));
+    });
+    return dataUrl;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ---------- interpretation ----------
@@ -184,7 +293,12 @@ async function playReplay(rec, waitedMs) {
 async function run(cap) {
   cancelInFlight();
   const seq = runSeq;
-  const payload = { species: stage.species, features: cap.features, image: grabFrame(), sessionId, pet };
+  const camFrame = grabFrame();
+  const imgSrc = cap.image ?? camFrame ?? portrait?.dataUrl ?? null;
+  const image = cfg.vision === false || cfg.demo ? null : imgSrc;
+  const imageKind = !image ? undefined : cap.image ? "moment" : camFrame ? "cam" : "portrait";
+  const payload = { species: stage.species, features: cap.features, image, sessionId, pet };
+  if (imageKind) payload.imageKind = imageKind;
   stage.set("queued");
   const t0 = performance.now();
   stage.emit("interpret:start", { lane: "cerebras", t0 });
@@ -289,8 +403,25 @@ async function captureThenRun(promiseCap) {
   cap.features = features;
   stage.emit("analysis", { features, buffer: cap.buffer });
   if (features.f0Median === 0) {
-    stage.set("error", { reason: "unvoiced" });
+    stage.set("error", { reason: cap.source === "file" ? "unvoiced-file" : "unvoiced" });
     return;
+  }
+  if (cap.window) {
+    const mm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+    const li = document.createElement("li");
+    li.textContent = `used ${mm(cap.window.fromSec)}-${mm(cap.window.toSec)} of ${mm(cap.window.totalSec)}, the loudest part`;
+    logList.appendChild(li);
+  }
+  if (cap.kind === "video") {
+    const rms = features.track?.rms || [];
+    const hop = features.track?.hopMs || 20;
+    let peak = 0;
+    for (let i = 0; i < rms.length; i++) if (rms[i] > rms[peak]) peak = i;
+    const tMs = peak * hop;
+    const dataUrl = await grabVideoFrame(cap.file, cap.window?.fromSec || 0, tMs);
+    const sent = dataUrl != null && !cfg.demo && cfg.vision !== false;
+    if (dataUrl) { cap.image = dataUrl; cap.imageKind = "moment"; }
+    stage.emit("media:frame", { dataUrl, tMs, fromSec: cap.window?.fromSec || 0, sent, demo: !!cfg.demo });
   }
   last = cap;
   await run(cap);
@@ -349,8 +480,10 @@ stage.on("intent:reply", guard(async (d) => {
 stage.on("intent:race", (d) => { race = !!d.on; });
 stage.on("species", (d) => {
   endSession();
+  clearMedia();
   pet = localStorage.getItem(`babble.pet.${d.species}`) || d.species;
 });
+stage.on("intent:media-clear", () => clearMedia());
 stage.on("intent:pet", (d) => {
   endSession();
   const name = String(d.name || "").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 32) || stage.species;

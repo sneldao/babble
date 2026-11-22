@@ -27,7 +27,7 @@ export function mount(el, st) {
 
   const line = document.createElement("p");
   line.className = "start-line";
-  line.textContent = "Point a mic at your pet. Babble measures the sound and tells you what it meant.";
+  line.textContent = "Point a mic at your pet, or bring a video of them. Babble measures the sound and tells you what it meant.";
 
   const chips = document.createElement("div");
   chips.className = "start-chips";

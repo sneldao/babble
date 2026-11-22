@@ -43,8 +43,12 @@ const ERROR_TEXT = {
   timeout: "No answer after 12 seconds. The model's queue is full.",
   network: "Lost the connection.",
   empty: "The model answered with nothing. Try again.",
+  nosound: "That video has no sound track. Babble reads sound, so try one where your pet is audible.",
+  format: "Couldn't read that file. Try an MP4, MOV, WebM, WAV or MP3.",
+  toobig: "That file is over 200 MB. Trim it to the moment your pet speaks.",
+  "unvoiced-file": "No clear call in that clip. Try a part where your pet is louder.",
   unvoiced: "Nothing voiced in that capture. Try closer to the mic.",
-  demo: "This hosted demo plays recorded answers — run it locally for live ones.",
+  demo: "Measured. The live translation needs the local build; this hosted demo only replays the samples.",
   internal: "Something broke on our side.",
 };
 const errorText = (reason, status, message) => {
@@ -171,12 +175,18 @@ export function mount(el, st) {
     }
   }
 
+  let portraitOn = false;
+  st.on("media:set", (d) => { if (d.kind === "photo") { portraitOn = true; if (st.state === "idle") setPrompt(); } });
+  st.on("media:clear", () => { if (portraitOn) { portraitOn = false; if (st.state === "idle") setPrompt(); } });
+
   function setPrompt() {
     clearLane(lanes.cerebras);
     clearLane(lanes.rival);
     const p = document.createElement("span");
     p.className = "cap-prompt";
-    p.textContent = "Listen to a sound, or try a sample.";
+    p.textContent = portraitOn
+      ? "Got the photo. Now let me hear them: Listen, or add a video."
+      : "Listen, drop in a video, or try a sample.";
     lanes.cerebras.uttIn.appendChild(p);
     replyEl.textContent = "";
     for (const t of glossTimers) clearTimeout(t);
@@ -440,7 +450,7 @@ export function mount(el, st) {
         stopQueue(L);
         L.status.textContent = "";
         const e = document.createElement("span");
-        e.className = "cap-error";
+        e.className = d.reason === "demo" ? "cap-error cap-note" : "cap-error";
         e.textContent = errorText(d.reason, d.status, d.message);
         L.status.appendChild(e);
         if (d.retry) {
@@ -512,15 +522,19 @@ export function mount(el, st) {
     st.on("vocalize:error", (d) => {
       const g = document.createElement("div");
       g.className = "cap-glosses";
+      const demo = d?.reason === "demo";
       const e = document.createElement("span");
-      e.className = "cap-error on";
-      e.textContent = d?.reason === "demo" ? "Talking back needs the live model — this is the hosted replay demo." : "Couldn't vocalize that.";
-      const b = document.createElement("button");
-      b.className = "cap-retry";
-      b.type = "button";
-      b.textContent = "Retry";
-      b.addEventListener("click", () => st.emit("intent:reply", { text: lastReplyText }));
-      g.append(e, b);
+      e.className = demo ? "cap-error cap-note on" : "cap-error on";
+      e.textContent = demo ? "Talking back needs the live model — this is the hosted replay demo." : "Couldn't vocalize that.";
+      g.appendChild(e);
+      if (!demo) {
+        const b = document.createElement("button");
+        b.className = "cap-retry";
+        b.type = "button";
+        b.textContent = "Retry";
+        b.addEventListener("click", () => st.emit("intent:reply", { text: lastReplyText }));
+        g.appendChild(b);
+      }
       replyEl.appendChild(g);
     }),
   ];

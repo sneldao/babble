@@ -180,8 +180,8 @@ export function mount(el, stage) {
       line1.textContent = `WAIT ${fmtS(now - c.t0)}`;
       line1.style.color = colors.signal;
     } else if (c.failed && c.phase === "error") {
-      line1.textContent = "decode failed · capture kept";
-      line1.style.color = colors.warn;
+      line1.textContent = c.reason === "demo" ? "measured · no live model here" : "decode failed · capture kept";
+      line1.style.color = c.reason === "demo" ? colors.ink2 : colors.warn;
     } else if (c.replay) {
       line1.textContent = "REPLAY · recorded response";
       line1.style.color = colors.ink2;
@@ -298,6 +298,7 @@ export function mount(el, stage) {
     const L = lanes[d.lane];
     if (!L) return;
     L.phase = "error";
+    L.reason = d.reason || "error";
     L.failed = true;
     if (d.lane === "cerebras") say("Interpretation failed.");
     kick();

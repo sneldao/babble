@@ -178,6 +178,7 @@
 }
 .cap-elapsed { color: var(--ink); }
 .cap-error { color: var(--warn); }
+.cap-note { color: var(--ink-2); }
 .cap-notice { color: var(--ink-2); }
 
 .cap-retry {

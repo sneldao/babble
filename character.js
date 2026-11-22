@@ -316,10 +316,10 @@ export function mount(el, st) {
 
   // ---------- resize ----------
   function resize() {
-    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
     const dpr = devicePixelRatio || 1;
-    canvas.width = Math.max(1, r.width * dpr);
-    canvas.height = Math.max(1, r.height * dpr);
+    canvas.width = Math.max(1, (el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * dpr);
+    canvas.height = Math.max(1, (el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) * dpr);
   }
   resize();
   const ro = new ResizeObserver(() => requestAnimationFrame(resize));
