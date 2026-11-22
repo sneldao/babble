@@ -71,7 +71,7 @@ them; do not edit it.
 ## Branches and order
 
 - Integration branch: `redesign`, cut from `main`.
-- Each dev works on `redesign/<letter>-<area>` and opens a PR into `redesign`.
+- Each dev works on `redesign-<letter>-<area>` (for example `redesign-b-ribbon`) and opens a PR into `redesign`. Git cannot hold both `redesign` and `redesign/...`, so use a hyphen, not a slash.
 - **M0, scaffold (A, first commit, before anything else from A):** new
   `index.html` skeleton, `tokens.css`, `layout.css`, fonts, `stage.js`, stub
   modules with the exports below, and the dev harness. B, C and D start on
