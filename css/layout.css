@@ -1,0 +1,163 @@
+#stage {
+  display: grid;
+  gap: 0;
+}
+
+#stage > * {
+  padding: clamp(10px, 2vw, 20px);
+  border-bottom: 1px solid var(--rule);
+}
+
+#masthead {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(12px, 2vw, 24px);
+}
+
+#masthead .wordmark {
+  font: 700 var(--step-1)/1.2 var(--font-display);
+}
+#masthead .wordmark .dot {
+  color: var(--signal);
+}
+#masthead .tagline {
+  color: var(--ink-2);
+  font-size: var(--step--1);
+}
+#masthead #engine {
+  margin-left: auto;
+  font: var(--step--1)/1.4 var(--font-mono);
+  color: var(--ink-2);
+}
+#masthead #logToggle {
+  font: inherit;
+  font-size: var(--step--1);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 0 1px;
+}
+#masthead #logToggle:hover {
+  border-bottom-color: var(--ink);
+}
+
+#stage,
+#character {
+  position: relative;
+}
+
+#camView {
+  display: none;
+}
+#camView.on {
+  display: block;
+  position: absolute;
+  top: clamp(10px, 2vw, 20px);
+  right: clamp(10px, 2vw, 20px);
+  width: 150px;
+  border-radius: 8px;
+  border: 1px solid var(--rule);
+}
+
+#start {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--paper);
+  display: none;
+}
+body[data-state="boot"] #start {
+  display: block;
+}
+
+#log {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(380px, 92vw);
+  background: var(--paper-2);
+  border-left: 1px solid var(--rule);
+  transform: translateX(100%);
+  transition: transform var(--dur-2) var(--ease-out);
+  padding: clamp(12px, 2vw, 20px);
+  overflow-y: auto;
+  z-index: 20;
+}
+#log.open {
+  transform: translateX(0);
+}
+#log h2 {
+  font-size: var(--step-0);
+  margin-bottom: 0.75em;
+}
+#logList {
+  padding-left: 1.4em;
+  font-size: var(--step--1);
+}
+#logList li {
+  margin-bottom: 0.6em;
+}
+
+@media (min-width: 900px) {
+  body {
+    overflow: hidden;
+  }
+  #stage {
+    height: 100dvh;
+    grid-template-columns: 1fr 1fr minmax(220px, 280px);
+    grid-template-rows: auto 34vh 1fr 26vh auto;
+    grid-template-areas:
+      "masthead masthead masthead"
+      "character character telemetry"
+      "captions captions captions"
+      "ribbon ribbon ribbon"
+      "controls controls controls";
+  }
+  #masthead  { grid-area: masthead; }
+  #character { grid-area: character; }
+  #telemetry { grid-area: telemetry; border-left: 1px solid var(--rule); }
+  #captions  { grid-area: captions; }
+  #ribbon    { grid-area: ribbon; }
+  #controls  { grid-area: controls; }
+}
+
+@media (max-width: 899.98px) {
+  #stage {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "masthead"
+      "character"
+      "captions"
+      "telemetry"
+      "ribbon"
+      "controls";
+  }
+  #masthead  { grid-area: masthead; }
+  #character { grid-area: character; }
+  #captions  { grid-area: captions; }
+  #telemetry { grid-area: telemetry; }
+  #ribbon    { grid-area: ribbon; }
+  #character { min-height: 38dvh; }
+  #captions  { min-height: 22dvh; }
+  #ribbon    { min-height: 24dvh; }
+  #controls {
+    grid-area: controls;
+    position: sticky;
+    bottom: 0;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+  }
+  #masthead .tagline {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

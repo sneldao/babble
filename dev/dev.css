@@ -1,0 +1,54 @@
+.dev-panel {
+  position: fixed;
+  left: 10px;
+  bottom: 10px;
+  z-index: 100;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font: var(--step--1)/1.4 var(--font-mono);
+  padding: 8px;
+  max-width: min(560px, 96vw);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.dev-panel button, .dev-panel select, .dev-panel input {
+  font: inherit;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.dev-panel input { cursor: text; min-width: 10em; }
+.dev-panel button:hover { border-color: var(--ink); }
+.dev-panel .dev-head {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--ink-2);
+}
+.dev-panel.collapsed > *:not(.dev-head) { display: none; }
+
+#intentBar {
+  left: auto;
+  right: 10px;
+  bottom: 10px;
+}
+
+.dev-log {
+  width: 100%;
+  max-height: 30vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--rule);
+  padding-top: 4px;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.dev-log div { padding: 1px 0; }
+.dev-log .t { color: var(--ink); }

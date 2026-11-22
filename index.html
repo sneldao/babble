@@ -4,78 +4,33 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Babble — the interspecies interpreter</title>
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="css/tokens.css" />
+<link rel="stylesheet" href="css/layout.css" />
+<link rel="stylesheet" href="css/character.css" />
+<link rel="stylesheet" href="css/captions.css" />
+<link rel="stylesheet" href="css/ribbon.css" />
+<link rel="stylesheet" href="css/telemetry.css" />
+<link rel="stylesheet" href="css/controls.css" />
+<link rel="stylesheet" href="css/start.css" />
 </head>
-<body>
-<header>
-  <div class="brand">Babble<span class="dot">.</span></div>
-  <div class="tag">the interpreter your pet assumed you already had</div>
-  <div class="engine">
-    <span class="live"></span>
-    <span id="model">…</span> via OpenClaw on Cerebras
-  </div>
-</header>
-
-<main>
-  <section class="booth">
-    <div class="stage">
-      <svg id="avatar" data-species="cat" viewBox="0 0 200 160">
-        <g class="tail"><path d="M168 118 q22 -8 20 -34" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/></g>
-        <g class="ear ear-l"><path d="M58 44 L48 10 L84 26 Z" fill="currentColor"/></g>
-        <g class="ear ear-r"><path d="M142 44 L152 10 L116 26 Z" fill="currentColor"/></g>
-        <ellipse cx="100" cy="96" rx="66" ry="58" fill="currentColor"/>
-        <ellipse cx="76" cy="88" rx="9" ry="12" fill="#0c0d12" class="eye"/>
-        <ellipse cx="124" cy="88" rx="9" ry="12" fill="#0c0d12" class="eye"/>
-        <circle cx="78" cy="84" r="3" fill="#fff" class="glint"/>
-        <circle cx="126" cy="84" r="3" fill="#fff" class="glint"/>
-        <path d="M94 108 q6 5 12 0" stroke="#0c0d12" stroke-width="3" fill="none" class="nose"/>
-        <ellipse class="mouth" cx="100" cy="122" rx="10" ry="3" fill="#3d1524"/>
-        <g class="whiskers" stroke="#e9e4da55" stroke-width="1.5">
-          <line x1="40" y1="104" x2="14" y2="98"/><line x1="40" y1="112" x2="16" y2="116"/>
-          <line x1="160" y1="104" x2="186" y2="98"/><line x1="160" y1="112" x2="184" y2="116"/>
-        </g>
-      </svg>
-      <video id="camView" muted autoplay playsinline></video>
-    </div>
-
-    <div id="speciesRow" class="species-row"></div>
-    <div id="persona" class="persona"></div>
-
-    <div class="controls">
-      <button id="listen">LISTEN</button>
-      <select id="dur"><option>2</option><option selected>3</option><option>5</option></select>
-      <button id="cam" title="attach a still frame for posture read">CAM</button>
-      <label class="filelabel">clip<input type="file" id="file" accept="audio/*" hidden /></label>
-      <select id="democlip">
-        <option value="">demo clips</option>
-        <option data-s="cat" value="cat-pleading.wav">cat · pleading meow</option>
-        <option data-s="cat" value="cat-meow.wav">cat · single meow</option>
-        <option data-s="cat" value="cat-meows2.wav">cat · meow run</option>
-        <option data-s="dog" value="dog-bark.wav">dog · barking</option>
-        <option data-s="dog" value="dog-bark2.wav">dog · bark volley</option>
-      </select>
-      <label class="race" title="run the same prompt on Groq alongside Cerebras"><input type="checkbox" id="race" /> race</label>
-    </div>
-
-    <canvas id="wave" width="640" height="72"></canvas>
-    <canvas id="spec" width="640" height="120"></canvas>
-    <canvas id="contour" width="640" height="60"></canvas>
-    <div id="queue"></div>
-  </section>
-
-  <section class="side">
-    <div class="telemetry">
-      <div><span id="tps">— tok/s</span><div class="bar"><div id="tpsBar"></div></div></div>
-      <div class="lat">turn <span id="lat">—</span></div>
-    </div>
-    <div id="transcript"></div>
-    <form id="reply">
-      <input id="replyText" placeholder="say something back…" autocomplete="off" />
-      <button type="submit">→</button>
-    </form>
-  </section>
+<body data-state="boot" data-species="cat">
+<div id="start" aria-label="Start screen"></div>
+<main id="stage">
+  <header id="masthead" aria-label="Masthead">
+    <span class="wordmark">Babble<span class="dot">.</span></span>
+    <span class="tagline">the interpreter your pet assumed you already had</span>
+    <span id="engine">…</span>
+    <button id="logToggle" type="button" aria-expanded="false" aria-controls="log">Log</button>
+  </header>
+  <section id="character" aria-label="Character"></section>
+  <section id="captions" aria-label="Captions"></section>
+  <section id="ribbon" aria-label="Sound ribbon"></section>
+  <aside id="telemetry" aria-label="Telemetry"></aside>
+  <nav id="controls" aria-label="Controls"></nav>
+  <aside id="log" aria-label="Conversation log"><h2>Log</h2><ol id="logList"></ol></aside>
+  <video id="camView" muted autoplay playsinline></video>
 </main>
-
+<!-- vendor scripts (Dev D adds gsap here) -->
 <script type="module" src="app.js"></script>
 </body>
 </html>

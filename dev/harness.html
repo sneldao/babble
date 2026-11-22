@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Babble dev harness</title>
+<link rel="stylesheet" href="../css/tokens.css" />
+<link rel="stylesheet" href="../css/layout.css" />
+<link rel="stylesheet" href="../css/character.css" />
+<link rel="stylesheet" href="../css/captions.css" />
+<link rel="stylesheet" href="../css/ribbon.css" />
+<link rel="stylesheet" href="../css/telemetry.css" />
+<link rel="stylesheet" href="../css/controls.css" />
+<link rel="stylesheet" href="../css/start.css" />
+<link rel="stylesheet" href="dev.css" />
+<style>
+  body.single > :not(.dev-panel) { height: 100dvh; }
+</style>
+</head>
+<body data-state="boot" data-species="cat">
+<script type="module">
+import { stage, SPECIES } from "../stage.js";
+import { unlock } from "../audio.js";
+import { runSession, runReply, runReplyError } from "./fake-stage.js";
+
+const MODULES = ["ribbon", "telemetry", "character", "captions", "start", "controls"];
+const CLIPS = ["cat-pleading.wav", "cat-meow.wav", "cat-meows2.wav", "dog-bark.wav", "dog-bark2.wav"];
+const m = new URLSearchParams(location.search).get("m") || "all";
+
+let mountEl;
+if (m === "all") {
+  document.body.innerHTML = `
+    <div id="start" aria-label="Start screen"></div>
+    <main id="stage">
+      <header id="masthead" aria-label="Masthead">
+        <span class="wordmark">Babble<span class="dot">.</span></span>
+        <span class="tagline">the interpreter your pet assumed you already had</span>
+        <span id="engine">dev harness</span>
+        <button id="logToggle" type="button" aria-expanded="false" aria-controls="log">Log</button>
+      </header>
+      <section id="character" aria-label="Character"></section>
+      <section id="captions" aria-label="Captions"></section>
+      <section id="ribbon" aria-label="Sound ribbon"></section>
+      <aside id="telemetry" aria-label="Telemetry"></aside>
+      <nav id="controls" aria-label="Controls"></nav>
+      <aside id="log" aria-label="Conversation log"><h2>Log</h2><ol id="logList"></ol></aside>
+      <video id="camView" muted autoplay playsinline></video>
+    </main>`;
+} else {
+  document.body.classList.add("single");
+  mountEl = document.createElement(m === "controls" ? "nav" : m === "telemetry" ? "aside" : m === "start" ? "div" : "section");
+  mountEl.id = m;
+  document.body.appendChild(mountEl);
+}
+
+for (const name of MODULES) {
+  if (m !== "all" && name !== m) continue;
+  const { mount } = await import(`../${name}.js`);
+  mount(m === "all" ? document.getElementById(name) : mountEl, stage);
+}
+if (m === "start") stage.set("boot"); else stage.set("idle");
+
+const panel = document.createElement("div");
+panel.className = "dev-panel";
+panel.innerHTML = `<div class="dev-head"><span>fake stage · m=${m}</span><button type="button" id="devFold">–</button></div>`;
+document.body.appendChild(panel);
+panel.querySelector("#devFold").addEventListener("click", () => panel.classList.toggle("collapsed"));
+
+let unlocked = false;
+async function press(fn) {
+  if (!unlocked) { unlocked = true; unlock(); }
+  fn();
+}
+
+const clipSel = document.createElement("select");
+for (const c of CLIPS) {
+  const o = document.createElement("option");
+  o.value = o.textContent = c;
+  clipSel.appendChild(o);
+}
+
+function add(label, fn) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = label;
+  b.addEventListener("click", () => press(fn));
+  panel.appendChild(b);
+  return b;
+}
+
+panel.appendChild(clipSel);
+add("Run ok", () => runSession(stage, { clip: clipSel.value, variant: "ok" }));
+add("Run replay", () => runSession(stage, { clip: clipSel.value, variant: "replay" }));
+add("Run timeout", () => runSession(stage, { clip: clipSel.value, variant: "timeout" }));
+add("Run race", () => runSession(stage, { clip: clipSel.value, variant: "race" }));
+add("Reply", () => runReply(stage));
+add("Reply error", () => runReplyError(stage));
+for (const [id, s] of Object.entries(SPECIES)) add(s.label, () => stage.setSpecies(id));
+add("boot", () => stage.set("boot"));
+add("idle", () => stage.set("idle"));
+
+const logEl = document.createElement("div");
+logEl.className = "dev-log";
+panel.appendChild(logEl);
+
+function short(v, depth = 0) {
+  if (v == null || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v === "string") return v.length > 60 ? JSON.stringify(v.slice(0, 57) + "…") : JSON.stringify(v);
+  if (v instanceof AnalyserNode) return "[AnalyserNode]";
+  if (v instanceof AudioBuffer) return "[AudioBuffer]";
+  if (Array.isArray(v)) return `[${v.length}]`;
+  if (typeof v === "object") {
+    if (depth > 1) return "{…}";
+    const entries = Object.entries(v).slice(0, 8).map(([k, x]) => `${k}:${short(x, depth + 1)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return String(v);
+}
+
+stage.on("*", ({ type, detail }) => {
+  const div = document.createElement("div");
+  const t = document.createElement("span");
+  t.className = "t";
+  t.textContent = type + " ";
+  div.appendChild(t);
+  div.appendChild(document.createTextNode(short(detail)));
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+});
+</script>
+</body>
+</html>
