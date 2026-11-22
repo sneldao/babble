@@ -416,8 +416,12 @@ async function captureThenRun(promiseCap) {
   if (cap.kind === "video") {
     const rms = features.track?.rms || [];
     const hop = features.track?.hopMs || 20;
-    let peak = 0;
-    for (let i = 0; i < rms.length; i++) if (rms[i] > rms[peak]) peak = i;
+    // loudest frame inside a call; background noise can be louder than the animal
+    const f0 = features.track?.f0 || [];
+    const inCall = f0.some((v) => v > 0);
+    let peak = -1;
+    for (let i = 0; i < rms.length; i++) if ((!inCall || f0[i] > 0) && (peak < 0 || rms[i] > rms[peak])) peak = i;
+    if (peak < 0) peak = 0;
     const tMs = peak * hop;
     const dataUrl = await grabVideoFrame(cap.file, cap.window?.fromSec || 0, tMs);
     const sent = dataUrl != null && !cfg.demo && cfg.vision !== false;
