@@ -33,6 +33,7 @@ const MIME = {
   ".wav": "audio/wav",
   ".mp3": "audio/mpeg",
   ".webm": "audio/webm",
+  ".woff2": "font/woff2",
 };
 
 const INTERPRET_SYSTEM = `You are the Babble interpreter — a real-time translator between animals and humans.
@@ -53,15 +54,26 @@ Rules: 1-4 syllables. Match species-typical ranges (cat meow ~400-700Hz arch; do
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "moonshotai/kimi-k2-instruct-0905";
 
-function groqChat(messages) {
+function groqChat(messages, signal) {
   return fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${GROQ_KEY}` },
     body: JSON.stringify({ model: GROQ_MODEL, stream: true, messages }),
+    signal,
   });
 }
 
-async function gatewayChat(messages, { stream = true, retries = 3 } = {}) {
+function abortableSleep(ms, signal) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(t);
+      reject(signal.reason instanceof Error ? signal.reason : new DOMException("aborted", "AbortError"));
+    }, { once: true });
+  });
+}
+
+async function gatewayChat(messages, { stream = true, retries = 3, signal } = {}) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const res = await fetch(`${GATEWAY}/v1/chat/completions`, {
       method: "POST",
@@ -71,12 +83,13 @@ async function gatewayChat(messages, { stream = true, retries = 3 } = {}) {
         "x-openclaw-model": BACKEND_MODEL,
       },
       body: JSON.stringify({ model: MODEL, stream, messages }),
+      signal,
     });
     if (res.ok || attempt === retries) return res;
     const status = res.status;
     await res.text().catch(() => {});
-    if (status !== 429 && status !== 500 && status !== 502 && status !== 503) return res;
-    await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
+    if (status !== 429 && status !== 502 && status !== 503) return res;
+    await abortableSleep(2500 * (attempt + 1), signal);
   }
 }
 
@@ -121,18 +134,32 @@ function buildInterpretMessages(body) {
   ];
 }
 
-async function pumpSse(upstream, res) {
-  if (!upstream.ok || !upstream.body) {
-    res.writeHead(502).end(await upstream.text().catch(() => "upstream error"));
-    return;
-  }
+// SSE headers and the first queued event go out BEFORE the upstream call, so
+// the browser sees the queue honestly while the gateway is still thinking.
+async function pumpSse(res, signal, tag, getUpstream) {
   const send = sse(res);
   const t0 = Date.now();
-  let tokens = 0;
-  const reader = upstream.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
+  let headersMs = null, firstMs = null, tokens = 0, status = null, outcome = "done";
+  const queued = setInterval(() => {
+    try { send({ queued: true, ms: Date.now() - t0 }); } catch {}
+  }, 1000);
+  try { send({ queued: true, ms: 0 }); } catch {}
   try {
+    const upstream = await getUpstream();
+    headersMs = Date.now() - t0;
+    status = upstream.status;
+    if (!upstream.ok || !upstream.body) {
+      outcome = "error";
+      try {
+        send({ error: "upstream", status: upstream.ok ? null : upstream.status });
+        res.end();
+      } catch {}
+      await upstream.text().catch(() => {});
+      return;
+    }
+    const reader = upstream.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -146,64 +173,144 @@ async function pumpSse(upstream, res) {
         try {
           const delta = JSON.parse(payload)?.choices?.[0]?.delta?.content;
           if (delta) {
+            if (firstMs === null) {
+              firstMs = Date.now() - t0;
+              clearInterval(queued);
+            }
             tokens += Math.max(1, Math.round(delta.length / 4));
             send({ delta });
           }
         } catch {}
       }
     }
-  } catch {}
-  send({ done: true, elapsedMs: Date.now() - t0, approxTokens: tokens });
-  res.end();
+    try {
+      send({ done: true, elapsedMs: Date.now() - t0, approxTokens: tokens });
+      res.end();
+    } catch {}
+  } catch (e) {
+    outcome = signal.aborted ? "aborted" : "error";
+    if (!res.writableEnded) {
+      try {
+        send({ error: outcome === "aborted" ? "aborted" : "upstream", status });
+        res.end();
+      } catch {}
+    }
+  } finally {
+    clearInterval(queued);
+    console.log(`[${tag}] status=${status} headersMs=${headersMs} firstMs=${firstMs} totalMs=${Date.now() - t0} tokens=${tokens} outcome=${outcome}`);
+  }
+}
+
+function abortOnClose(res) {
+  const ac = new AbortController();
+  res.on("close", () => { if (!res.writableEnded) ac.abort(); });
+  return ac;
 }
 
 async function handleInterpret(req, res) {
-  const upstream = await gatewayChat(buildInterpretMessages(await readBody(req)));
-  return pumpSse(upstream, res);
+  const ac = abortOnClose(res);
+  const body = await readBody(req);
+  return pumpSse(res, ac.signal, "interpret lane=cerebras", () =>
+    gatewayChat(buildInterpretMessages(body), { signal: ac.signal }));
 }
 
 async function handleCompare(req, res) {
-  if (!GROQ_KEY) return res.writeHead(501).end("no GROQ_API_KEY configured");
-  const upstream = await groqChat(buildInterpretMessages(await readBody(req)));
-  return pumpSse(upstream, res);
+  if (!GROQ_KEY) {
+    console.log("[compare lane=groq] status=501 headersMs=null firstMs=null totalMs=0 tokens=0 outcome=error");
+    return res.writeHead(501).end("no GROQ_API_KEY configured");
+  }
+  const ac = abortOnClose(res);
+  const body = await readBody(req);
+  return pumpSse(res, ac.signal, "compare lane=groq", () =>
+    groqChat(buildInterpretMessages(body), ac.signal));
 }
 
 async function handleVocalize(req, res) {
+  const ac = abortOnClose(res);
+  const t0 = Date.now();
   const body = await readBody(req);
-  // stream upstream (the gateway's streaming path tolerates long queues better)
-  const upstream = await gatewayChat([
-    { role: "system", content: VOCALIZE_SYSTEM },
-    { role: "user", content: `species=${body.species || "cat"}\nhuman_says="${String(body.text || "").slice(0, 300)}"` },
-  ]);
-  let text = "";
-  if (upstream.ok && upstream.body) {
-    const rdr = upstream.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
-    for (;;) {
-      const { done, value } = await rdr.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      for (const line of buf.split("\n")) {
-        if (!line.startsWith("data:")) continue;
-        const p = line.slice(5).trim();
-        if (p === "[DONE]") continue;
-        try {
-          text += JSON.parse(p)?.choices?.[0]?.delta?.content || "";
-        } catch {}
+  let text = "", reason = null;
+  try {
+    // stream upstream (the gateway's streaming path tolerates long queues better)
+    const upstream = await gatewayChat([
+      { role: "system", content: VOCALIZE_SYSTEM },
+      { role: "user", content: `species=${body.species || "cat"}\nhuman_says="${String(body.text || "").slice(0, 300)}"` },
+    ], { signal: ac.signal });
+    if (upstream.ok && upstream.body) {
+      const rdr = upstream.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await rdr.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const p = line.slice(5).trim();
+          if (p === "[DONE]") continue;
+          try {
+            text += JSON.parse(p)?.choices?.[0]?.delta?.content || "";
+          } catch {}
+        }
       }
+    } else if (upstream.ok) {
+      const json = await upstream.json().catch(() => null);
+      text = json?.choices?.[0]?.message?.content || "";
+    } else {
+      reason = "upstream";
+      await upstream.text().catch(() => {});
     }
-  } else {
-    const json = await upstream.json().catch(() => null);
-    text = json?.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    reason = ac.signal.aborted ? "aborted" : "upstream";
   }
   let script = null;
-  try {
-    const m = text.match(/\{[\s\S]*\}/);
-    script = m ? JSON.parse(m[0]).script : null;
-  } catch {}
+  if (!reason) {
+    try {
+      const m = text.match(/\{[\s\S]*\}/);
+      script = m ? JSON.parse(m[0]).script : null;
+    } catch {}
+    if (!script) reason = "parse";
+  }
+  const outcome = reason ? (reason === "aborted" ? "aborted" : "error") : "done";
+  console.log(`[vocalize] status=${script ? 200 : 502} headersMs=null firstMs=null totalMs=${Date.now() - t0} tokens=0 outcome=${outcome}`);
+  if (res.writableEnded) return;
+  if (reason === "aborted") return;
   res.writeHead(script ? 200 : 502, { "content-type": "application/json" });
-  res.end(JSON.stringify({ script, raw: script ? undefined : text }));
+  res.end(JSON.stringify(script ? { script } : { script: null, reason }));
+}
+
+async function handleDevReplay(req, res) {
+  if (process.env.BABBLE_RECORD !== "1") return res.writeHead(403).end();
+  const body = await readBody(req);
+  const clip = String(body.clip || "");
+  if (!/^[a-z0-9-]+\.wav$/.test(clip)) return res.writeHead(400).end("bad clip");
+  const deltas = Array.isArray(body.deltas) ? body.deltas.slice(0, 2000) : [];
+  const clean = deltas.map((d) => ({
+    tMs: Math.max(0, Number(d.tMs) || 0),
+    text: String(d.text ?? "").slice(0, 200),
+  }));
+  const header = body.header && typeof body.header === "object" ? body.header : {};
+  const record = {
+    clip,
+    species: String(body.species || "cat"),
+    header: {
+      vocal: header.vocal ?? null,
+      mood: header.mood ?? null,
+      confidence: typeof header.confidence === "number" ? header.confidence : null,
+    },
+    deltas: clean,
+    queueMs: Number(body.queueMs) || 0,
+    decodeMs: Number(body.decodeMs) || 0,
+    recordedAt: new Date().toISOString(),
+  };
+  const { writeFile, mkdir } = await import("node:fs/promises");
+  const name = clip.replace(/\.wav$/, "");
+  await mkdir(join("public", "replays"), { recursive: true });
+  await writeFile(join("public", "replays", name + ".json"), JSON.stringify(record, null, 2));
+  res.writeHead(200, { "content-type": "application/json" });
+  res.end(JSON.stringify({ ok: true, file: `public/replays/${name}.json` }));
 }
 
 function readBody(req) {
@@ -228,12 +335,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/api/interpret") return handleInterpret(req, res);
     if (req.method === "POST" && req.url === "/api/compare") return handleCompare(req, res);
     if (req.method === "POST" && req.url === "/api/vocalize") return handleVocalize(req, res);
+    if (req.method === "POST" && req.url === "/api/dev/replay") return handleDevReplay(req, res);
     if (req.method === "GET" && req.url === "/api/config") {
       res.writeHead(200, { "content-type": "application/json" });
-      return res.end(JSON.stringify({ model: MODEL, gateway: GATEWAY, agent: AGENT_ID }));
+      return res.end(JSON.stringify({ model: MODEL, gateway: GATEWAY, agent: AGENT_ID, record: process.env.BABBLE_RECORD === "1" }));
     }
     if (req.method !== "GET") return res.writeHead(405).end();
-    const path = normalize(req.url === "/" ? "/index.html" : req.url.split("?")[0]);
+    const path = normalize(req.url.split("?")[0] === "/" ? "/index.html" : req.url.split("?")[0]);
     const file = join("public", path);
     if (!file.startsWith("public")) return res.writeHead(403).end();
     const data = await readFile(file);
