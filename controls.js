@@ -113,6 +113,7 @@ export function mount(el, st) {
   replyRow.className = "ctl-reply";
   const replyIn = document.createElement("input");
   replyIn.className = "ctl-input";
+  replyIn.size = 3; // keeps the row's min-content small enough for one-row layouts
   replyIn.placeholder = "Say something back…";
   replyIn.disabled = true;
   replyIn.title = "Translate a sound first";

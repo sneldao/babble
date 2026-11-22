@@ -125,6 +125,9 @@ export function mount(el, st) {
 
   const lanes = { cerebras: makeLane("cerebras"), groq: makeLane("groq") };
   lanes.groq.el.hidden = true;
+  new ResizeObserver(() => requestAnimationFrame(() => {
+    fitLane(lanes.cerebras); fitLane(lanes.groq);
+  })).observe(lanesEl);
 
   function stopQueue(L) {
     clearInterval(L.queueTimer);
@@ -241,7 +244,12 @@ export function mount(el, st) {
       }
       L.uttIn.appendChild(word);
     }
+    fitLane(L);
     if (!RM) scheduleReveal(L);
+  }
+
+  function fitLane(L) {
+    L.utt.classList.toggle("roll", L.uttIn.scrollHeight > L.utt.clientHeight + 2);
   }
 
   function scheduleReveal(L) {
@@ -284,6 +292,10 @@ export function mount(el, st) {
     for (const rec of L.pending.splice(0)) reveal(rec, true);
     if (L.raf) cancelAnimationFrame(L.raf);
     L.raf = 0;
+    // Anything left dim (a record lost to a cleared queue, a delta that
+    // raced the done) still ends fully opaque.
+    for (const ch of L.uttIn.querySelectorAll(".cap-ch:not(.on)")) ch.classList.add("on");
+    for (const bar of L.uttIn.querySelectorAll(".cap-bar")) bar.remove();
   }
 
   // --- header + race -------------------------------------------------------
@@ -316,6 +328,7 @@ export function mount(el, st) {
     finishPending(L);
     L.doneMs = performance.now();
     if (d.replay) L.tag.hidden = false;
+    fitLane(L);
     if (d.lane === "cerebras") {
       liveEl.textContent = d.text || "";
       replyEl.textContent = ""; // new result supersedes an old reply line

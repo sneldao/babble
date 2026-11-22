@@ -111,6 +111,7 @@ export function mount(el, stage) {
     specImg: null,      // offscreen canvas nCols x SPEC_ROWS
     specDurMs: 0,
     computing: 0,       // settled-compute token
+    gen: 0,             // capture generation — stale async work checks it
     settling: false,
     playP: -1,
     colors: null,
@@ -215,12 +216,12 @@ export function mount(el, stage) {
     return Math.min(1, Math.max(0, (performance.now() - L.startedAt) / L.durationMs));
   }
 
-  function liveTick() {
-    if (!S.live) return;
+  function liveTick(gen) {
+    if (!S.live || gen !== S.gen) return;
     paintLiveColumn();
     S.playP = progress();
     draw();
-    if (S.playP < 1) S.live.raf = requestAnimationFrame(liveTick);
+    if (S.playP < 1) S.live.raf = requestAnimationFrame(() => liveTick(gen));
     else S.playP = -1; // hold the painted history until analysis settles
   }
 
@@ -284,6 +285,18 @@ export function mount(el, stage) {
 
   function draw() {
     readColorsIfNeeded();
+    // devicePixelRatio can change without a ResizeObserver (emulation,
+    // moving between displays); a stale backing store paints at the wrong
+    // scale, so re-fit first — size() calls back into draw().
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    const cw = Math.max(50, el.clientWidth);
+    const ch = Math.max(50, el.clientHeight || canvas.clientHeight || 280);
+    if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
+      size();
+      return;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     const w = W(), h = H();
     const C = S.colors;
     ctx.clearRect(0, 0, w, h);
@@ -480,8 +493,12 @@ export function mount(el, stage) {
       }
       let drop = 0;
       if (markPlaced.some((p) => lx < p.x1 + 4 && lx + tw + 4 > p.x)) drop = 12;
+      // Marks near the left edge: sit below the title line and to the right
+      // of the mark, clear of the y-axis frequency labels.
+      const leftEdge = lx < PAD.l + 56;
+      const ly = PAD.t + (leftEdge ? 22 : 9) + drop;
       markPlaced.push({ x: lx, x1: lx + tw });
-      ctx.fillText(label, lx, PAD.t + 9 + drop);
+      ctx.fillText(label, lx, ly);
     }
 
     // Talk-back view: reply syllables own the plot on their own time axis.
@@ -589,6 +606,7 @@ export function mount(el, stage) {
 
   function resetSession(source, startedAt, durationMs, analyser) {
     stopLive();
+    S.gen++;
     S.computing++; // cancel any settled compute in flight
     S.settling = false;
     S.capture = { source, startedAt, durationMs, analyser };
@@ -614,6 +632,7 @@ export function mount(el, stage) {
   stage.on("capture:start", (d) => {
     resetSession(d.source, d.startedAt, d.durationMs, d.analyser || null);
     say(`Capturing ${d.source}.`);
+    const gen = S.gen;
     if (d.analyser && !RM) {
       S.live = {
         analyser: d.analyser,
@@ -622,7 +641,7 @@ export function mount(el, stage) {
         fq: new Uint8Array(d.analyser.frequencyBinCount),
         raf: 0,
       };
-      liveTick();
+      liveTick(gen);
     } else if (d.analyser) {
       // Reduced motion: still sample the live data, without the sweep.
       S.live = {
@@ -633,7 +652,7 @@ export function mount(el, stage) {
         raf: 0,
       };
       const sample = () => {
-        if (!S.live) return;
+        if (!S.live || gen !== S.gen) return;
         paintLiveColumn();
         S.playP = -1;
         draw();
