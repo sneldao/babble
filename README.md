@@ -2,14 +2,15 @@
 
 Point a microphone at your cat, dog, or infant. Babble measures what the
 vocalization actually did — pitch contour, call count, energy envelope — and
-an agent renders what it meant. Once the model starts answering, the whole
-translation streams in within a fraction of a second. Talk back, and your
+an agent renders what it meant. Babble shows the wait before the answer and
+how long it takes to stream. Talk back, and your
 words are re-synthesized as species-shaped vocalizations. Babble remembers
 each animal between sessions.
 
 Built for the **Cerebras × Moonshot Kimi K3.1 Pro × OpenClaw Weekend
 Hackathon**. All interpretation runs through an **OpenClaw** agent (`babble`)
 whose backend model is **Kimi K3.1 Pro on Cerebras**.
+Thank you to the Cerebras and Moonshot teams for the preview access.
 
 **Hosted demo: https://sneldao.github.io/babble/** — the full experience,
 playing the recorded real responses for each sample clip (labelled REPLAY).
@@ -115,19 +116,27 @@ demo clip (the budget rises to 180 s in this mode).
   first non-empty content chunk until the response stream closes. It is not
   provider-side compute time; it includes transport and stream finalization.
 - **Wait** (request to first content chunk) is shown separately and never folded into
-  speed. It covers the shared trial endpoint's queue, OpenClaw's retries when
-  that queue is full, and the model's hidden thinking: Kimi K3.1 Pro always
+  speed. It covers the preview endpoint's queue, OpenClaw's retries while
+  that queue is busy, and the model's hidden thinking: Kimi K3.1 Pro always
   reasons before answering (Babble asks for the lowest effort, `low`).
+- The Kimi K3.1 Pro endpoint was a private preview shared by every hackathon
+  participant, so the wait before the first word varied with load during the
+  event, from a few seconds to a couple of minutes. That reflects event
+  capacity, not the model or the hardware, and it is why Babble shows wait
+  apart from decode. In about ten live runs on 22 Nov with the default 12 s
+  budget, decode took 0.17-1.04 s.
 - When the final usage chunk arrives, Babble subtracts reported reasoning
   tokens from completion tokens and shows the reasoning count separately.
   Otherwise it estimates output tokens from characters divided by four and
-  labels the rate `est.`. Nebius returned usage in the verified race-lane
-  request; no usable streaming usage was observed on the Cerebras trial lane
-  in the earlier check. Live rates are estimates until the stream finishes.
-- Measured on 22 Nov through the gateway: 10-170 s of wait before the first
-  word, mostly the overloaded trial queue, then 0.25-0.6 s to decode the
-  whole reply. With the 12 s budget, demo clips usually fall back to REPLAY
-  (see above).
+  labels the rate `est.`. Both lanes returned provider-reported counts in the
+  completed live race, but usage may be absent on other runs. Live rates are
+  estimates until the stream finishes.
+- One live two-lane race completed on 22 Nov, with longer test-only timeouts
+  and at a moment of heavy load on the preview: Cerebras waited 115.42 s and
+  streamed in 6.15 s; Nebius waited 16.98 s and streamed in 0.87 s. Both
+  would have missed the app's default 12 s first-content budget. It is a
+  single take, not a benchmark of either provider, and we have not repeated
+  it under normal load.
 
 The redesign plan, current status and the review follow-ups live in
 `docs/redesign/README.md`.

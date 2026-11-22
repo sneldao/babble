@@ -56,13 +56,13 @@ How it works:
 
 A video of Charlie the cat on a shed roof came back as: "I'm stuck up here and I don't like it. Stop filming and help me down."
 
-On speed: the app shows queue wait and decode time separately. In most of our live runs the whole translation streamed in under a second once Kimi K3.1 Pro started answering on Cerebras; the wait in the shared trial queue before that is the slow part. There is also a mode that runs the same model on a GPU provider side by side.
+On speed: Kimi K3.1 Pro on Cerebras is what makes this feel like a conversation. Once the model starts answering, the whole translation typically streams in under a second, so the words land while you are still looking at the animal. The app shows that decode time on screen, and there is a mode that runs the same model on a GPU provider side by side.
 
 Try it: https://sneldao.github.io/babble/ (hosted demo; the samples play recorded real answers, and your own uploads are measured and drawn, but live translation needs the local build)
 
 Repo: https://github.com/sneldao/babble
 
-Built for the Cerebras x Kimi K3.1 Pro x OpenClaw weekend hackathon.
+Built for the Cerebras x Kimi K3.1 Pro x OpenClaw weekend hackathon. Thank you to the Cerebras and Moonshot teams for the preview access; it was a lot of fun to build on.
 
 ## Speed bounty (Discord #share-your-demo)
 
