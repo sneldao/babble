@@ -68,7 +68,35 @@ them; do not edit it.
 
 `public/style.css` is deleted by A in the scaffold commit.
 
+## Current status (updated 22 Nov, 07:50 UTC)
+
+- **Trunk is `redesign-integration`**, not `redesign`. It is the only branch
+  with real captions, start screen and controls. All branches are pushed to
+  `origin`.
+- **Worktrees:** `babble-dev-a` holds `redesign-integration` and is the only
+  place merges into the trunk happen. Every other agent works in its own
+  worktree on a short-lived branch cut from `origin/redesign-integration`,
+  pushes it, and hands it over to be merged. Do not edit another worktree.
+- **Replays are recorded**: `public/replays/<clip>.json` exists for all five
+  demo clips (branch `redesign-replays`). To re-record, run
+  `BABBLE_RECORD=1 node server.mjs` against the real gateway and play each
+  demo clip; `app.js` posts the finished stream to `/api/dev/replay`. Record
+  mode raises the first-token budget from 12s to 180s. There is no
+  `scripts/record-replays.mjs`; the in-app record mode replaced it.
+- **First real end-to-end run** (real OpenClaw gateway, not the mock on 4399):
+  interpretation works, but the first token took 24-58s per clip and 3 of 8
+  attempts did not finish in 180s. Decode after the first token is about 0.6s.
+  With the normal 12s budget every live run falls back to REPLAY, and
+  talk-back (`/api/vocalize`, same 12s budget) times out.
+- **Known layout bug:** in the `done` state the header chip line is clipped
+  behind the caption and the first caption line scrolls out of view.
+- **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
+  `agent-workspace/memory/`) are gitignored.
+
 ## Branches and order
+
+The original plan below is kept for reference; where it disagrees with
+"Current status", the status section wins.
 
 - Integration branch: `redesign`, cut from `main`.
 - Each dev works on `redesign-<letter>-<area>` (for example `redesign-b-ribbon`) and opens a PR into `redesign`. Git cannot hold both `redesign` and `redesign/...`, so use a hyphen, not a slash.
