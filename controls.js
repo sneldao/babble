@@ -74,12 +74,12 @@ export function mount(el, st) {
   const gSource = document.createElement("div");
   gSource.className = "ctl-group";
   const sampleBtn = B("ctl-btn", "Try a sample", { "aria-haspopup": "menu", "aria-expanded": "false" });
-  const uploadBtn = B("ctl-btn", "Upload a clip");
+  const uploadBtn = B("ctl-btn", "Upload", { title: "Upload a clip" });
   const fileIn = document.createElement("input");
   fileIn.type = "file";
   fileIn.accept = "audio/*";
   fileIn.hidden = true;
-  const camBtn = B("ctl-btn", "Camera", { "aria-pressed": "false" });
+  const camBtn = B("ctl-btn", "Cam", { "aria-pressed": "false", title: "Camera" });
   gSource.append(sampleBtn, uploadBtn, fileIn, camBtn);
 
   const gOpts = document.createElement("div");
@@ -94,17 +94,28 @@ export function mount(el, st) {
     b.addEventListener("click", () => st.setSpecies(sp));
     spWrap.appendChild(b);
   }
-  const raceBtn = B("ctl-switch", "", { role: "switch", "aria-checked": "false", "aria-label": "Race Groq" });
+  const raceBtn = B("ctl-switch", "", { role: "switch", "aria-checked": "false", "aria-label": "Race a GPU" });
   const raceTrack = document.createElement("span");
   raceTrack.className = "ctl-switch-track";
   const raceThumb = document.createElement("span");
   raceThumb.className = "ctl-switch-thumb";
   raceTrack.appendChild(raceThumb);
   const raceLbl = document.createElement("span");
-  raceLbl.textContent = "Race Groq";
+  raceLbl.textContent = "Race a GPU";
   raceBtn.append(raceTrack, raceLbl);
   const muteBtn = B("ctl-btn", "Mute", { "aria-pressed": "false" });
-  gOpts.append(spWrap, raceBtn, muteBtn);
+  const petWrap = document.createElement("label");
+  petWrap.className = "ctl-pet";
+  const petLbl = document.createElement("span");
+  petLbl.className = "ctl-pet-lbl";
+  petLbl.textContent = "Pet name";
+  const petIn = document.createElement("input");
+  petIn.className = "ctl-input ctl-pet-in";
+  petIn.size = 9;
+  petIn.maxLength = 32;
+  petIn.autocomplete = "off";
+  petWrap.append(petLbl, petIn);
+  gOpts.append(spWrap, raceBtn, muteBtn, petWrap);
 
   main.append(gListen, gSource, gOpts);
 
@@ -182,7 +193,7 @@ export function mount(el, st) {
   }
   function openSheet() {
     sheet.hidden = false;
-    sheetBody.append(durWrap, uploadBtn, camBtn, spWrap, raceBtn, muteBtn);
+    sheetBody.append(durWrap, uploadBtn, camBtn, spWrap, raceBtn, muteBtn, petWrap);
     sheetOpen = true;
     mMore.setAttribute("aria-expanded", "true");
   }
@@ -191,7 +202,7 @@ export function mount(el, st) {
     sheetOpen = false;
     gListen.append(durWrap);
     gSource.append(uploadBtn, camBtn);
-    gOpts.append(spWrap, raceBtn, muteBtn);
+    gOpts.append(spWrap, raceBtn, muteBtn, petWrap);
     mMore.setAttribute("aria-expanded", "false");
   }
 
@@ -296,7 +307,14 @@ export function mount(el, st) {
   }
   function reflectSpecies() {
     for (const c of spWrap.children) c.setAttribute("aria-pressed", String(c.dataset.sp === st.species));
+    petIn.placeholder = st.species[0].toUpperCase() + st.species.slice(1);
+    petIn.value = localStorage.getItem(`babble.pet.${st.species}`) || "";
   }
+  function sendPet() {
+    st.emit("intent:pet", { name: petIn.value.trim() });
+  }
+  petIn.addEventListener("change", sendPet);
+  petIn.addEventListener("keydown", (e) => { if (e.key === "Enter") sendPet(); e.stopPropagation(); });
 
   const RING_LEN = 2 * Math.PI * 17;
   ringC.style.strokeDasharray = String(RING_LEN);

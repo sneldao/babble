@@ -17,7 +17,10 @@ function wait(ms, token) {
 }
 
 async function streamUtterance(stage, lane, text, t0, queueMs, replay, token, deltaMs = 12) {
-  stage.emit("interpret:header", { lane, vocal: "solicitation", mood: "impatient", confidence: 0.82 });
+  stage.emit("interpret:header", {
+    lane, vocal: "solicitation", mood: "impatient", confidence: 0.82,
+    evidence: "rising contour; 2 calls; median f0 600 Hz",
+  });
   if (lane === "cerebras") stage.set("streaming");
   let body = "";
   let chars = 0;
@@ -40,6 +43,7 @@ async function streamUtterance(stage, lane, text, t0, queueMs, replay, token, de
     tokens: Math.ceil(chars / 4),
     tps: (chars / 4) / (decodeMs / 1000 || 0.001),
     replay,
+    tokensEstimated: false, reasoningTokens: 0,
   });
 }
 
@@ -77,12 +81,12 @@ export async function runSession(stage, { clip = "cat-pleading.wav", variant = "
 
   if (variant === "race") {
     const gt0 = performance.now();
-    stage.emit("interpret:start", { lane: "groq", t0: gt0 });
+    stage.emit("interpret:start", { lane: "rival", t0: gt0 });
     const gToken = token;
     (async () => {
       await wait(900, gToken);
       if (gToken.id !== runId) return;
-      await streamUtterance(stage, "groq", UTTERANCES[species], gt0, performance.now() - gt0, false, gToken, 45);
+      await streamUtterance(stage, "rival", UTTERANCES[species], gt0, performance.now() - gt0, false, gToken, 45);
     })();
   }
 

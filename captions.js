@@ -51,7 +51,7 @@ const errorText = (reason, status, message) => {
   return ERROR_TEXT[reason] || "Something broke on our side.";
 };
 
-const LANE_NAME = { cerebras: "Kimi K3.1 Pro on Cerebras", groq: "Groq" };
+const LANE_NAME = { cerebras: "Kimi K3.1 Pro on Cerebras", rival: "GPU rival" };
 
 export function mount(el, st) {
   el.innerHTML = "";
@@ -88,6 +88,9 @@ export function mount(el, st) {
 
     const head = document.createElement("div");
     head.className = "cap-head";
+    const ev = document.createElement("div");
+    ev.className = "cap-ev";
+    ev.hidden = true;
     const label = document.createElement("div");
     label.className = "cap-label";
     const nameEl = document.createElement("span");
@@ -112,21 +115,25 @@ export function mount(el, st) {
 
     const status = document.createElement("div");
     status.className = "cap-status";
-    lane.append(notice, head, label, utt, status);
+    lane.append(notice, head, ev, label, utt, status);
     lanesEl.appendChild(lane);
 
     const L = {
-      name, el: lane, head, tag, flag, notice, utt, uttIn, status,
+      name, el: lane, head, ev, label, nameEl, tag, flag, notice, utt, uttIn, status,
+      evidence: null,
       text: "", chars: [], pending: [], raf: 0, doneMs: null, startT0: 0,
       queueTimer: 0, queueIdx: 0, fit: 1, fitRaf: 0,
     };
     return L;
   }
 
-  const lanes = { cerebras: makeLane("cerebras"), groq: makeLane("groq") };
-  lanes.groq.el.hidden = true;
+  const lanes = { cerebras: makeLane("cerebras"), rival: makeLane("rival") };
+  lanes.rival.el.hidden = true;
+  fetch("/api/config").then((r) => r.json()).then((cfg) => {
+    if (cfg?.rival?.label) lanes.rival.nameEl.textContent = cfg.rival.label;
+  }).catch(() => {});
   new ResizeObserver(() => requestAnimationFrame(() => {
-    fitToBox(lanes.cerebras); fitToBox(lanes.groq);
+    fitToBox(lanes.cerebras); fitToBox(lanes.rival);
   })).observe(lanesEl);
 
   function stopQueue(L) {
@@ -150,6 +157,10 @@ export function mount(el, st) {
     L.uttIn.textContent = "";
     L.status.textContent = "";
     L.notice.hidden = true;
+    L.evidence = null;
+    L.ev.hidden = true;
+    L.ev.textContent = "";
+    L.ev.title = "";
     if (!keepHeader) {
       L.el.classList.remove("has-header");
       L.head.textContent = "";
@@ -160,7 +171,7 @@ export function mount(el, st) {
 
   function setPrompt() {
     clearLane(lanes.cerebras);
-    clearLane(lanes.groq);
+    clearLane(lanes.rival);
     const p = document.createElement("span");
     p.className = "cap-prompt";
     p.textContent = "Listen to a sound, or try a sample.";
@@ -347,6 +358,12 @@ export function mount(el, st) {
     if (d.mood) parts.push(String(d.mood));
     if (d.confidence != null) parts.push(`${confBlocks(d.confidence)} ${Math.round(d.confidence * 100)}%`);
     L.head.textContent = parts.join(" · ");
+    L.evidence = typeof d.evidence === "string" && d.evidence.trim() ? d.evidence.trim() : null;
+    L.ev.hidden = !L.evidence;
+    if (L.evidence) {
+      L.ev.textContent = `heard: ${L.evidence}`;
+      L.ev.title = L.evidence;
+    }
   }
 
   function onDone(d) {
@@ -357,7 +374,7 @@ export function mount(el, st) {
     if (d.replay) L.tag.hidden = false;
     scheduleFit(L);
     if (d.lane === "cerebras") {
-      liveEl.textContent = d.text || "";
+      liveEl.textContent = (d.text || "") + (L.evidence ? ` Heard: ${L.evidence}.` : "");
       replyEl.textContent = ""; // new result supersedes an old reply line
     }
     if (raceOn && d.lane !== undefined) {
@@ -367,8 +384,8 @@ export function mount(el, st) {
         const secs = ((first[1].t - first[1].t0) / 1000).toFixed(2);
         lanes[first[0]].flag.textContent = `finished first · ${secs} s`;
       }
-      if (doneTimes.cerebras && doneTimes.groq) {
-        const margin = (Math.abs(doneTimes.cerebras.t - doneTimes.groq.t) / 1000).toFixed(2);
+      if (doneTimes.cerebras && doneTimes.rival) {
+        const margin = (Math.abs(doneTimes.cerebras.t - doneTimes.rival.t) / 1000).toFixed(2);
         lanes.cerebras.flag.textContent += ` · margin ${margin} s`;
       }
     }
@@ -379,13 +396,14 @@ export function mount(el, st) {
     if (!L) return;
     finishPending(L);
     stopQueue(L);
-    if (d.lane === "groq" && d.status === 501) {
+    if (d.lane === "rival") {
       L.status.textContent = "";
       const e = document.createElement("span");
       e.className = "cap-error";
-      e.textContent = "Groq offline (no key)";
+      e.textContent = d.status === 501
+        ? "GPU rival offline (not configured)"
+        : errorText(d.reason, d.status, d.message);
       L.status.appendChild(e);
-      return;
     }
   }
 
@@ -401,7 +419,7 @@ export function mount(el, st) {
       if (d.state === "listening" || d.state === "analysing") {
         doneTimes = {};
         showBreathing(lanes.cerebras);
-        if (raceOn) showBreathing(lanes.groq);
+        if (raceOn) showBreathing(lanes.rival);
       }
       if (d.state === "error") {
         const L = lanes.cerebras;
@@ -424,10 +442,10 @@ export function mount(el, st) {
     st.on("interpret:start", (d) => {
       const L = lanes[d.lane];
       if (!L) return;
-      if (d.lane === "groq" && !raceOn) {
+      if (d.lane === "rival" && !raceOn) {
         raceOn = true;
         el.dataset.race = "on";
-        lanes.groq.el.hidden = false;
+        lanes.rival.el.hidden = false;
       }
       clearLane(L);
       startQueue(L, d.t0);
@@ -435,8 +453,8 @@ export function mount(el, st) {
     st.on("intent:race", (d) => {
       raceOn = !!d.on;
       el.dataset.race = raceOn ? "on" : "off";
-      lanes.groq.el.hidden = !raceOn;
-      if (!raceOn) clearLane(lanes.groq);
+      lanes.rival.el.hidden = !raceOn;
+      if (!raceOn) clearLane(lanes.rival);
     }),
     st.on("interpret:header", onHeader),
     st.on("interpret:delta", (d) => {

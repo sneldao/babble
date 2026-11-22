@@ -17,7 +17,7 @@
 #captions[data-race="on"] .cap-lanes {
   grid-template-columns: 1fr 1fr;
 }
-#captions[data-race="on"] .cap-lane[data-lane="groq"] {
+#captions[data-race="on"] .cap-lane[data-lane="rival"] {
   border-left: 1px solid var(--rule);
   padding-left: clamp(12px, 2vw, 24px);
 }
@@ -30,9 +30,10 @@
   flex-direction: column;
   max-height: 100%;
 }
-.cap-lane[data-lane="groq"] { --lane-accent: var(--rival); }
+.cap-lane[data-lane="rival"] { --lane-accent: var(--rival); }
 .cap-lane[data-lane="cerebras"] { --lane-accent: var(--signal); }
 .cap-lane[hidden] { display: none; }
+.cap-lane > :not(.cap-utt) { flex: none; }
 
 .cap-head {
   font-family: var(--font-mono);
@@ -48,6 +49,16 @@
 }
 .cap-lane.has-header .cap-head { opacity: 1; }
 .cap-head .cap-conf { color: var(--ink-2); }
+
+.cap-ev {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.1em;
+}
 
 .cap-label {
   font-family: var(--font-mono);
@@ -230,9 +241,10 @@
 
 @media (max-width: 899.98px) {
   #captions { min-height: 30dvh; }
+  #captions[data-race="on"] { min-height: 36dvh; }
   .cap-utt { font-size: max(1.25rem, calc(var(--step-2) * var(--fit, 1))); }
   #captions[data-race="on"] .cap-lanes { grid-template-columns: 1fr; }
-  #captions[data-race="on"] .cap-lane[data-lane="groq"] {
+  #captions[data-race="on"] .cap-lane[data-lane="rival"] {
     border-left: 0;
     border-top: 1px solid var(--rule);
     padding-left: 0;
