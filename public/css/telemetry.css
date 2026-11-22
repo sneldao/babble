@@ -1,22 +1,31 @@
-/* Speed telemetry — Dev B. One small instrument: the dot-matrix speed readout. */
+/* Speed telemetry — Dev B. Dot-matrix figure + mono DOM text. */
 
 #telemetry {
-  min-height: 120px;
-  height: 148px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .telemetry-canvas {
   display: block;
   width: 100%;
-  height: 100%;
+  height: 84px;
+  flex: none;
   border: 1px solid var(--rule);
   border-radius: 3px;
-  background: var(--paper);
+  background: var(--paper-2);
 }
 
-@media (max-width: 640px) {
-  #telemetry {
-    min-height: 110px;
-    height: 128px;
-  }
+.telemetry-text {
+  font: var(--step--1)/1.55 var(--font-mono);
+  color: var(--ink-2);
+  min-height: 2.6em;
+}
+.telemetry-text div { min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 899.98px) {
+  #telemetry { flex-direction: row; align-items: center; }
+  .telemetry-canvas { width: 46%; height: 64px; }
+  .telemetry-text { min-height: 0; }
 }

@@ -14,9 +14,9 @@ const F_TICKS = [100, 200, 500, 1000, 2000, 4000];
 const TIME_STEP_MS = 500;
 const SPEC_ROWS = 128;
 const LIVE_COLS = 256, LIVE_ROWS = 64;
-const FFT_N = 1024;
+const FFT_N = 512;
 
-const PAD = { l: 56, r: 14, t: 26, b: 78 };
+const PAD = { l: 44, r: 10, t: 18, b: 58 };
 const MONO = `"Kode Mono", ui-monospace, monospace`;
 
 // --- radix-2 FFT (settled spectrogram) -------------------------------------
@@ -111,6 +111,7 @@ export function mount(el, stage) {
     specImg: null,      // offscreen canvas nCols x SPEC_ROWS
     specDurMs: 0,
     computing: 0,       // settled-compute token
+    settling: false,
     playP: -1,
     colors: null,
   };
@@ -232,31 +233,31 @@ export function mount(el, stage) {
     const pcm = buf.getChannelData(0);
     const sr = buf.sampleRate;
     const durMs = S.features?.durationMs || S.capture?.durationMs || 0;
-    const nCols = Math.min(480, Math.max(96, Math.round(durMs / 8)));
+    const nCols = Math.min(320, Math.max(96, Math.round(durMs / 12)));
     const cols = new Array(nCols);
     const step = (pcm.length - FFT_N) / Math.max(1, nCols - 1);
     let max = 0;
     let i = 0;
-    S.specImg = null;
+    // Paint progressively left-to-right so the picture visibly fills in.
+    const img = document.createElement("canvas");
+    img.width = nCols; img.height = SPEC_ROWS;
+    const g = img.getContext("2d");
+    g.fillStyle = S.colors.paper;
+    g.fillRect(0, 0, nCols, SPEC_ROWS);
+    const binHz = sr / FFT_N;
+    S.specImg = img;
+    S.specDurMs = durMs;
+    S.settling = true;
     function chunk() {
-      if (token !== S.computing) return; // superseded by a newer capture
-      const end = Math.min(nCols, i + 32);
+      if (token !== S.computing) { S.settling = false; return; }
+      const end = Math.min(nCols, i + 96);
       for (; i < end; i++) {
         const mags = fftMag(pcm, Math.max(0, Math.floor(i * step)), sr);
         cols[i] = mags;
         for (let k = 0; k < mags.length; k++) if (mags[k] > max) max = mags[k];
       }
-      if (i < nCols) {
-        requestAnimationFrame(chunk);
-        return;
-      }
-      if (token !== S.computing) return;
-      // Paint the offscreen spectrogram once, in log-frequency rows.
-      const img = document.createElement("canvas");
-      img.width = nCols; img.height = SPEC_ROWS;
-      const g = img.getContext("2d");
-      const binHz = sr / FFT_N;
-      for (let c = 0; c < nCols; c++) {
+      // paint the newly computed columns with the running max
+      for (let c = Math.max(0, i - 96); c < i; c++) {
         const mags = cols[c];
         for (let j = 0; j < SPEC_ROWS; j++) {
           const [lo, hi] = hzForRow(j, SPEC_ROWS);
@@ -269,9 +270,10 @@ export function mount(el, stage) {
           g.fillRect(c, j, 1, 1);
         }
       }
-      if (token !== S.computing) return;
-      S.specImg = img;
-      S.specDurMs = durMs;
+      draw();
+      if (i < nCols) { requestAnimationFrame(chunk); return; }
+      if (token !== S.computing) { S.settling = false; return; }
+      S.settling = false;
       draw();
       say("Spectrogram settled.");
     }
@@ -309,6 +311,8 @@ export function mount(el, stage) {
 
     // Spectrogram: settled image, else live history.
     ctx.imageSmoothingEnabled = true;
+    ctx.save();
+    if (S.talk) ctx.globalAlpha = 0.25; // reply view: capture recedes
     if (S.specImg) {
       const sw = (pw * S.specDurMs) / ax;
       ctx.drawImage(S.specImg, PAD.l, PAD.t, Math.max(1, sw), ph);
@@ -316,6 +320,7 @@ export function mount(el, stage) {
       const sw = (pw * S.capture.durationMs) / ax;
       ctx.drawImage(S.liveImg, PAD.l, PAD.t, Math.max(1, sw), ph);
     }
+    ctx.restore();
 
     // After-the-sound zone: axis extended past the capture by slow arrivals.
     const durMs = S.capture?.durationMs || 0;
@@ -351,23 +356,33 @@ export function mount(el, stage) {
       }
     }
 
-    // Pitch line on the same Hz axis, broken where unvoiced.
+    // Pitch line on the same Hz axis. Breaks on unvoiced frames, on jumps
+    // over 35% between consecutive voiced frames (octave errors), and drops
+    // voiced runs shorter than 3 frames — never a segment to the floor.
     if (track?.f0?.length) {
       ctx.strokeStyle = C.ink;
       ctx.lineWidth = 2;
       ctx.lineJoin = "round";
-      ctx.beginPath();
-      let pen = false, voicedAt = 0, voicedN = 0;
+      let run = [];
+      let voicedAt = 0, voicedN = 0;
+      const flush = () => {
+        if (run.length >= 3) {
+          ctx.beginPath();
+          run.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+          ctx.stroke();
+        }
+        run = [];
+      };
+      let prev = 0;
       for (let i = 0; i < track.f0.length; i++) {
         const f0 = track.f0[i];
-        if (!f0) { pen = false; continue; }
+        if (!f0 || (prev && (f0 > prev * 1.35 || f0 < prev / 1.35))) { flush(); prev = f0; continue; }
+        prev = f0;
         const x = PAD.l + (pw * i * track.hopMs) / ax;
-        const y = yFor(f0);
-        if (!pen) { ctx.moveTo(x, y); pen = true; }
-        else ctx.lineTo(x, y);
+        run.push([x, yFor(f0)]);
         voicedAt += i * track.hopMs; voicedN++;
       }
-      ctx.stroke();
+      flush();
       const med = S.features?.f0Median;
       if (med && voicedN) {
         ctx.fillStyle = C.signal;
@@ -403,7 +418,7 @@ export function mount(el, stage) {
     if (worst > 2) ({ items } = pack(compact)); // narrow plot: short labels
     for (const { sg, i, label, lx, row } of items) {
       const x0 = xFor(sg.startMs ?? 0), x1 = xFor(sg.endMs ?? sg.durMs ?? 0);
-      const y = PAD.t + ph + 32;
+      const y = PAD.t + ph + 22;
       ctx.strokeStyle = C.ink;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -412,45 +427,71 @@ export function mount(el, stage) {
       ctx.moveTo(x1, y); ctx.lineTo(x1, y + 4);
       ctx.stroke();
       ctx.fillStyle = C.ink;
-      ctx.fillText(label, lx, y + 12 + Math.min(row, 2) * 12);
+      ctx.fillText(label, lx, y + 11 + Math.min(row, 1) * 11);
     }
 
-    // Arrival marks: proof of the speed claim. Labels stagger down when
-    // two marks land close together (narrow plots).
+    // Arrival marks: proof of the speed claim. Marks < 90 css px apart get
+    // one combined "words a–b s" label over a bracket; the second close
+    // label otherwise drops to a lower row.
     const markPlaced = [];
-    for (const m of S.marks) {
+    const markGroups = [];
+    for (const m of [...S.marks].sort((a, b) => a.ms - b.ms)) {
       const x = xFor(m.ms);
-      const col = m.lane === "groq" ? C.rival : C.ink;
+      const last = markGroups[markGroups.length - 1];
+      if (last && m.lane === last[0].lane && Math.abs(x - xFor(last[last.length - 1].ms)) < 90) last.push(m);
+      else markGroups.push([m]);
+    }
+    for (const grp of markGroups) {
+      const col = grp[0].lane === "groq" ? C.rival : C.ink;
+      const replay = grp[0].replay;
       ctx.strokeStyle = col;
       ctx.lineWidth = 1;
-      if (m.replay) ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + ph);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      // Flag head: filled live, hollow on replay.
-      ctx.beginPath();
-      ctx.arc(x, PAD.t + 4, 3.5, 0, 7);
-      if (m.replay) { ctx.strokeStyle = col; ctx.stroke(); }
-      else { ctx.fillStyle = col; ctx.fill(); }
+      for (const m of grp) {
+        const x = xFor(m.ms);
+        if (replay) ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(x, PAD.t + 14); ctx.lineTo(x, PAD.t + ph);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(x, PAD.t + 4, 3.5, 0, 7);
+        if (replay) { ctx.strokeStyle = col; ctx.stroke(); }
+        else { ctx.fillStyle = col; ctx.fill(); }
+      }
       ctx.fillStyle = col;
       ctx.font = `10px ${MONO}`;
-      const label = `${m.kind === "first" ? "first word" : "last word"}` +
-        (m.lane === "groq" ? " · groq" : "") + (m.replay ? " · replay" : "");
-      const tw = ctx.measureText(label).width;
-      const lx = Math.min(Math.max(PAD.l + 2, x + 6), PAD.l + pw - tw);
+      let label, lx, tw;
+      if (grp.length > 1) {
+        const t0 = (grp[0].ms / 1000).toFixed(2), t1 = (grp[grp.length - 1].ms / 1000).toFixed(2);
+        label = `words ${t0}–${t1} s` + (replay ? " · replay" : "");
+        tw = ctx.measureText(label).width;
+        const x0 = xFor(grp[0].ms), x1 = xFor(grp[grp.length - 1].ms);
+        lx = Math.min(Math.max(PAD.l + 2, (x0 + x1) / 2 - tw / 2), PAD.l + pw - tw);
+        ctx.beginPath();
+        ctx.moveTo(x0, PAD.t + 18); ctx.lineTo(x1, PAD.t + 18);
+        ctx.strokeStyle = col;
+        ctx.stroke();
+      } else {
+        const m = grp[0];
+        label = `${m.kind === "first" ? "first word" : "last word"}` +
+          (m.lane === "groq" ? " · groq" : "") + (m.replay ? " · replay" : "");
+        tw = ctx.measureText(label).width;
+        lx = Math.min(Math.max(PAD.l + 2, xFor(m.ms) + 6), PAD.l + pw - tw);
+      }
       let drop = 0;
       if (markPlaced.some((p) => lx < p.x1 + 4 && lx + tw + 4 > p.x)) drop = 12;
       markPlaced.push({ x: lx, x1: lx + tw });
-      ctx.fillText(label, lx, PAD.t + 7 + drop);
+      ctx.fillText(label, lx, PAD.t + 9 + drop);
     }
 
-    // Talk-back: outgoing syllables on the same axes.
+    // Talk-back view: reply syllables own the plot on their own time axis.
     if (S.talk) {
+      const total = S.talk.totalMs || 1;
+      const xT = (ms) => PAD.l + (pw * ms) / total;
       ctx.lineWidth = 2;
       for (const s of S.talk.entries) {
-        const x0 = xFor(S.talk.originMs + s.tMs);
-        const x1 = xFor(S.talk.originMs + s.tMs + s.durMs);
+        const x0 = xT(s.tMs);
+        const x1 = xT(s.tMs + s.durMs);
         ctx.strokeStyle = C.signal;
         ctx.beginPath();
         let mx = x0, my = 0;
@@ -469,6 +510,11 @@ export function mount(el, stage) {
           ctx.fillText(g, mx - ctx.measureText(g).width / 2, my - 6);
         }
       }
+      ctx.fillStyle = C.ink2;
+      ctx.font = `10px ${MONO}`;
+      const spName = SPECIES[S.species]?.label?.toLowerCase() || S.species;
+      const cap = `your reply, in ${spName}`;
+      ctx.fillText(cap, PAD.l + pw - ctx.measureText(cap).width, PAD.t + 22);
     }
 
     // Grid + ticks.
@@ -486,8 +532,8 @@ export function mount(el, stage) {
     for (let i = 0; i <= steps; i++) {
       const t = i * step;
       const x = xFor(t);
-      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + ph); ctx.stroke();
-      ctx.fillText(`${(t / 1000).toFixed(1)}s`, x - 8, PAD.t + ph + 16);
+      ctx.beginPath(); ctx.moveTo(x, PAD.t + 14); ctx.lineTo(x, PAD.t + ph); ctx.stroke();
+      ctx.fillText(`${(t / 1000).toFixed(1)}s`, x - 8, PAD.t + ph + 10);
     }
 
     // Live playhead (suppressed under reduced motion).
@@ -495,7 +541,7 @@ export function mount(el, stage) {
       const x = PAD.l + (pw * S.capture.durationMs * S.playP) / ax;
       ctx.strokeStyle = C.signal;
       ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + ph); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, PAD.t + 14); ctx.lineTo(x, PAD.t + ph); ctx.stroke();
     }
 
     // HUD frame: corner brackets + mono readouts (procedural-eye language).
@@ -511,7 +557,7 @@ export function mount(el, stage) {
     ctx.fillStyle = C.ink2;
     ctx.font = `10px ${MONO}`;
     const range = sp2.rangeHz ? `${sp2.rangeHz[0]}–${sp2.rangeHz[1]} Hz` : "";
-    ctx.fillText(`RIBBON · ${sp2.label || S.species} ${range} · 80–4k log`, 12, 15);
+    ctx.fillText(`RIBBON · ${sp2.label || S.species} ${range} · 80–4k log`, 12, 12);
     let right = S.failed ? `decode failed · capture kept` : stateWord();
     if (S.raceOn) right += " · race";
     const rtw = ctx.measureText(right).width;
@@ -535,6 +581,7 @@ export function mount(el, stage) {
 
   function stateWord() {
     if (!S.capture) return "idle";
+    if (S.settling) return "settling";
     if (S.specImg) return "settled";
     if (S.live) return "live";
     return "queued";
@@ -543,6 +590,7 @@ export function mount(el, stage) {
   function resetSession(source, startedAt, durationMs, analyser) {
     stopLive();
     S.computing++; // cancel any settled compute in flight
+    S.settling = false;
     S.capture = { source, startedAt, durationMs, analyser };
     S.features = null;
     S.buffer = null;
@@ -656,19 +704,18 @@ export function mount(el, stage) {
   });
 
   stage.on("vocalize:play", (d) => {
-    const originMs = S.capture ? Math.max(0, d.startedAt - S.capture.startedAt) : 0;
     const entries = (d.schedule || []).map((s) => ({
       tMs: s.tMs, durMs: s.durMs, shape: s.shape, pitch: s.pitch, gloss: s.gloss,
     }));
     const endMs = entries.reduce((m, s) => Math.max(m, s.tMs + s.durMs), 0);
-    S.talk = { originMs, entries, endMs: originMs + endMs };
+    S.talk = { entries, endMs, totalMs: d.totalMs || endMs };
     S.failed = false; // user action acknowledged the error; show the reply
     say("Talking back.");
     draw();
   });
 
   // Keep the picture truthful on resize: redraw from stored data.
-  new ResizeObserver(() => size()).observe(el);
+  new ResizeObserver(() => requestAnimationFrame(size)).observe(el);
 
   size();
   say("Sound ribbon ready.");

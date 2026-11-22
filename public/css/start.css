@@ -1,1 +1,132 @@
-/* start — Dev D */
+/* start — Dev D. The first ten seconds. */
+
+#start .start-dialog {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(20px, 6vw, 90px);
+  background: var(--paper);
+  transition: opacity var(--dur-3) var(--ease-out), visibility var(--dur-3);
+}
+#start .start-dialog.out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#start .start-mark {
+  font: 700 var(--step-3)/1 var(--font-display);
+  color: var(--ink);
+  margin: 0;
+}
+#start .start-mark i { color: var(--signal); font-style: normal; }
+
+#start .start-line {
+  font: var(--step-0)/1.45 var(--font-display);
+  color: var(--ink-2);
+  max-width: 34ch;
+  margin: 1.2em 0 2em;
+}
+
+#start .start-chips {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 2.4em;
+}
+#start .start-chip {
+  font: 600 var(--step--1)/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  padding: 0.7em 1.1em;
+  cursor: pointer;
+  min-height: 44px;
+}
+#start .start-chip[data-sp="cat"] { --chip: var(--cat); }
+#start .start-chip[data-sp="dog"] { --chip: var(--dog); }
+#start .start-chip[data-sp="infant"] { --chip: var(--infant); }
+#start .start-chip[aria-pressed="true"] {
+  border-color: var(--chip);
+  color: var(--chip);
+  box-shadow: inset 0 0 0 1px var(--chip);
+}
+#start .start-chip:hover { border-color: var(--chip); }
+
+#start .start-btn {
+  font: 600 var(--step-1)/1 var(--font-display);
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  border-radius: 6px;
+  padding: 0.9em 1.8em;
+  min-height: 56px;
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease-spring), background var(--dur-1);
+}
+#start .start-btn:hover:not(:disabled) { transform: translateY(-1px); }
+#start .start-btn:active:not(:disabled) { transform: translateY(1px); }
+#start .start-btn:disabled { opacity: 0.45; cursor: default; }
+#start .start-btn:focus-visible,
+#start .start-chip:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+#start .start-legend {
+  position: absolute;
+  left: clamp(20px, 6vw, 90px);
+  bottom: clamp(16px, 4vw, 36px);
+  font: var(--step--1)/1.6 var(--font-mono);
+  color: var(--ink-2);
+}
+#start .start-sound {
+  position: absolute;
+  right: clamp(20px, 6vw, 90px);
+  bottom: clamp(16px, 4vw, 36px);
+  font: var(--step--1)/1.6 var(--font-mono);
+  color: var(--ink-2);
+}
+#start .start-sound::before {
+  content: "";
+  display: inline-block;
+  width: 0.55em; height: 0.55em;
+  border-radius: 50%;
+  background: var(--ok);
+  margin-right: 0.5em;
+  vertical-align: baseline;
+}
+
+#start .start-pane {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 55%;
+  height: min(62%, 460px);
+  pointer-events: none;
+  overflow: hidden;
+}
+#start .start-pane .char-canvas { align-items: flex-end; }
+@media (min-width: 900px) {
+  #start .start-dialog { padding-right: 56%; }
+}
+@media (max-width: 899.98px) {
+  #start .start-dialog { justify-content: flex-start; padding-top: 8px; }
+  #start .start-pane {
+    position: relative;
+    width: 100%;
+    height: 30dvh;
+    order: -1;
+    margin-bottom: 4px;
+    flex: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #start .start-dialog { transition: none; }
+}

@@ -1,8 +1,10 @@
 /* Sound ribbon — Dev B. Lower-third stage: the DSP picture, large and annotated. */
 
 #ribbon {
-  min-height: 280px;
-  height: clamp(240px, 34vh, 340px);
+  min-height: 0;
+  height: 100%;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
 }
 
 .ribbon-canvas {
@@ -19,11 +21,8 @@ body[data-state="streaming"] #ribbon .ribbon-canvas {
   border-left: 2px solid var(--signal);
 }
 
-@media (max-width: 640px) {
-  #ribbon {
-    min-height: 200px;
-    height: 240px;
-  }
+@media (max-width: 899.98px) {
+  #ribbon { min-height: 24dvh; height: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
