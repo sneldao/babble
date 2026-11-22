@@ -73,6 +73,11 @@ them; do not edit it.
 - **Everything is merged to `main`.** `redesign-integration` and `redesign`
   point at the same commit and are kept for history. The per-developer
   branches are fully merged and their worktrees removed.
+- **Hosted demo:** the app also runs as a pure static site at
+  https://sneldao.github.io/babble/ — when `api/config` is unreachable (or
+  `?demo` is set), sample clips replay their recorded real responses labelled
+  REPLAY and mic/file/reply show an honest note. Deploy after changing
+  `public/`: `git subtree push --prefix public origin gh-pages`.
 - **Polish landed:** the GooeyStickyMenu stretch item is in — a goo-filter
   pill (SVG blur + alpha ramp, `public/goo.js`) slides under the active
   species button on the start screen and in the controls. The stage now
