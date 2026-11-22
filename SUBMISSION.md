@@ -26,6 +26,22 @@ Repo: https://github.com/sneldao/babble
 
 ## Speed bounty (Discord #share-your-demo)
 
-Speed Bounty entry: <TPS> TPS
-(video showing OpenClaw web chat run finding 5 real products + links,
-with the tok/s readout visible)
+Speed Bounty entry: 1,032 TPS
+
+Products found by the patched OpenClaw run (session
+`main/9192d345640b442eb9353af35f791131` on the patched gateway, :19001):
+
+1. Waterstones — The Boy, the Mole, the Fox and the Horse
+   https://www.waterstones.com/book/the-boy-the-mole-the-fox-and-the-horse/charlie-mackesy/9781529105100
+2. Hotel Chocolat — Mini Chocolate Christmas Crackers (10)
+   https://www.hotelchocolat.com/uk/p/mini-chocolate-christmas-crackers/300835m.html
+3. Lush — Snow Fairy Gift Set
+   https://www.lush.com/uk/en/p/snow-fairy-gift
+4. Whittard — Coffees of the World Gift Set, £27.96
+   https://www.whittard.com/products/coffees-of-the-world-gift-set
+5. LEGO — Orchid 10311
+   https://www.lego.com/en-gb/product/orchid-10311
+
+Video: screen-record the session page (chat + all 5 product tabs + the
+"572 tok/s mean · 1,032 p90 (server)" readout) and post to
+#share-your-demo with the line above.
