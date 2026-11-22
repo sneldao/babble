@@ -6,6 +6,11 @@
 #stage > * {
   padding: clamp(10px, 2vw, 20px);
   border-bottom: 1px solid var(--rule);
+  min-height: 0;
+}
+
+#masthead, #character, #captions, #ribbon, #telemetry {
+  overflow: hidden;
 }
 
 #masthead {
@@ -108,7 +113,7 @@ body[data-state="boot"] #start {
   #stage {
     height: 100dvh;
     grid-template-columns: 1fr 1fr minmax(220px, 280px);
-    grid-template-rows: auto 34vh 1fr 26vh auto;
+    grid-template-rows: auto minmax(0, 26vh) minmax(0, 1fr) minmax(0, 32vh) auto;
     grid-template-areas:
       "masthead masthead masthead"
       "character character telemetry"
@@ -122,6 +127,10 @@ body[data-state="boot"] #start {
   #captions  { grid-area: captions; }
   #ribbon    { grid-area: ribbon; }
   #controls  { grid-area: controls; }
+}
+
+@media (max-width: 1100px) {
+  #masthead .tagline { display: none; }
 }
 
 @media (max-width: 899.98px) {
@@ -140,7 +149,7 @@ body[data-state="boot"] #start {
   #captions  { grid-area: captions; }
   #telemetry { grid-area: telemetry; }
   #ribbon    { grid-area: ribbon; }
-  #character { min-height: 38dvh; }
+  #character { height: 38dvh; }
   #captions  { min-height: 22dvh; }
   #ribbon    { min-height: 24dvh; }
   #controls {

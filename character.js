@@ -151,11 +151,12 @@ function drawCat(g, S, ears, squash, tilt, tongue) {
   face(g, S);
 }
 function drawDog(g, S, ears, squash, tilt, tongue) {
-  // long head with muzzle; floppy ears hang and swing
+  // long head with muzzle; floppy ears hang down both sides and swing
   for (const [sx, e] of [[-1, ears.l], [1, ears.r]]) {
-    g.save(); g.translate(sx * 74, -52); g.rotate(e.rot * sx + e.droop * 0.5 * sx);
-    g.beginPath(); g.moveTo(-4, -22); g.bezierCurveTo(34, -30, 44, 24, 26, 74 + e.droop * 30);
-    g.bezierCurveTo(16, 88, -8, 80, -10, 58); g.closePath();
+    g.save(); g.translate(sx * 80, -62); g.scale(sx, 1);
+    g.rotate(e.rot + e.droop * 0.45);
+    g.beginPath(); g.moveTo(-10, -20); g.bezierCurveTo(36, -28, 46, 40, 30, 108 + e.droop * 26);
+    g.bezierCurveTo(22, 124, -6, 116, -8, 88); g.closePath();
     g.fillStyle = shade(S.fill, -0.18); g.fill(); stroke(g, 5);
     g.restore();
   }
@@ -204,7 +205,8 @@ function face(g, S, dx = 0, dy = 0) {
     g.save();
     g.translate(sx * 34 + S.gaze.x * 9 + dx, -30 + S.gaze.y * 7 + dy);
     const side = sx < 0 ? "L" : "R";
-    g.scale(S.pop * S.blink, S.pop * S.blink);
+    // PAINT eye cells are authored in 256-unit space; the head radius is ~96.
+    g.scale(S.pop * S.blink * 0.2, S.pop * S.blink * 0.2);
     PAINT[e.eye(side)](g);
     if (e.hl) { g.save(); PAINT[e.hl](g); g.restore(); }
     g.restore();
@@ -267,8 +269,9 @@ export function mount(el, st) {
     }),
     st.on("species", ({ species }) => {
       wake();
-      // squash out, swap silhouette, spring in
-      S.swap = { to: species };
+      S.swap = { to: species, t0: S.t };
+      if (reduced) { S.species = species; S.swap = null; }
+      requestAnimationFrame(readSignal);
     }),
     st.on("capture:start", ({ analyser }) => {
       wake(); setExpr("listening");
@@ -317,11 +320,9 @@ export function mount(el, st) {
     const dpr = devicePixelRatio || 1;
     canvas.width = Math.max(1, r.width * dpr);
     canvas.height = Math.max(1, r.height * dpr);
-    canvas.style.width = r.width + "px";
-    canvas.style.height = r.height + "px";
   }
   resize();
-  const ro = new ResizeObserver(resize);
+  const ro = new ResizeObserver(() => requestAnimationFrame(resize));
   ro.observe(el);
 
   // ---------- frame ----------
@@ -358,10 +359,12 @@ export function mount(el, st) {
     if (st.state === "streaming") S.mouthOpen += (0 - S.mouthOpen) * Math.min(1, dt * 5);
     else if (st.state !== "listening") S.mouthOpen += (0 - S.mouthOpen) * Math.min(1, dt * 10);
 
-    // species swap: squash out, swap, spring in
+    // species swap: squash out over 120 ms, swap silhouette, spring back
     if (S.swap) {
-      S.squash.v -= 26 * dt;
-      if (S.squash.x < -0.55) { S.species = S.swap.to; readSignal(); S.swap = null; S.squash.v = 8; }
+      const p = Math.min(1, (S.t - S.swap.t0) / 120);
+      S.squash.x = -0.35 * p;
+      S.squash.v = 0;
+      if (p >= 1) { S.species = S.swap.to; readSignal(); S.swap = null; S.squash.v = 6; }
     }
 
     // springs (skipped under reduced motion)
@@ -375,9 +378,9 @@ export function mount(el, st) {
       spring(S.tilt, e.tilt ?? (S.tiltT ? 0.1 : 0), 5, 0.6, dt);
       S.tiltT = 0;
       spring(S.lean, e.lean ?? 0, 6, 0.6, dt);
-      // breathing: slow 2% squash (idle-ish states only)
+      // breathing: slow 2% squash (idle-ish states only); held during swap
       const breathe = ["idle", "done", "queued"].includes(st.state) ? Math.sin(S.t * 0.0011) * 0.02 : 0;
-      spring(S.squash, breathe, 7, 0.7, dt);
+      if (!S.swap) spring(S.squash, breathe, 7, 0.7, dt);
       // gaze smoothing (exponential, jelly)
       if (!reduced) {
         S.gaze.x += (S.gazeT.x - S.gaze.x) * Math.min(1, dt * 6);
@@ -434,7 +437,8 @@ export function mount(el, st) {
     // ---------- paint ----------
     const w = canvas.width, h = canvas.height;
     g.clearRect(0, 0, w, h);
-    const scale = Math.min(w / 340, h / 320) * 0.92;
+    // figure spans ~230 units ear-to-chin and ~250 across dog ears: fill ~80%
+    const scale = Math.min(w / 310, h / 290);
     g.save();
     g.translate(w / 2, h * 0.56);
     g.scale(scale, scale);
