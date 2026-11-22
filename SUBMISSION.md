@@ -6,14 +6,37 @@ Deadline: Sunday 22 Nov, 10:00 AM PT (18:00 UTC). Attach the video (60 s or
 less, recorded with standard OpenClaw, not the speed patch). Impressions are
 counted Tuesday 24 Nov, 10:00 AM PT; organic only.
 
-### Standard account (275 characters; X counts the link as 23)
+### Standard account (269 characters; X counts the link as 23)
 
 ```
-Project Name: Babble
+My cat climbed onto a shed and yelled at me. Babble's translation:
+“Back off, I'm not okay up here. Give me space and help me get down.”
+
+Babble: a pet interpreter on OpenClaw + Kimi K3.1 Pro on Cerebras.
+https://github.com/sneldao/babble
+#KimiOnCerebras @Cerebras @Kimi_Moonshot
+```
+
+### X Premium (682 characters)
+
+```
+My cat climbed onto a shed and yelled at me. Babble's translation:
+“Back off, I'm not okay up here. Give me space and help me get down.”
+
+Project: Babble
 Team: @ungethe
-Project Description: It translates your pet: measures the real meow or bark, then an OpenClaw agent on Kimi K3.1 Pro on Cerebras says what it meant.
+
+I built a pet interpreter. It listens to real meows and barks, measures pitch, call count and loudness, and reads them together with a frame of the video to say what your pet might mean.
+
+Powered by OpenClaw + Kimi K3.1 Pro on Cerebras. Once the answer starts, the whole translation is on screen in 0.79 s.
+
+Not quite Google Translate for cats. But getting there. 🐱
+
+And yes, you can talk back. Babble meows your reply.
+
 GitHub: https://github.com/sneldao/babble
-Demo Video: below
+Demo video: below
+
 #KimiOnCerebras @Cerebras @Kimi_Moonshot
 ```
 
@@ -25,16 +48,8 @@ Try it: https://sneldao.github.io/babble/ (hosted demo, plays recorded real answ
 How it works: browser DSP measures pitch, call count and loudness. An OpenClaw agent on Kimi K3.1 Pro on Cerebras reads the numbers plus a frame of your video. Talk back and it meows your words.
 ```
 
-### Long form (X Premium only)
-
-Project Name: Babble
-Team Members: @ungethe
-Project Description: Babble is an interspecies interpreter: point a mic at your cat or dog (or drop in a video of them), browser DSP measures the actual vocalization (pitch contour, call segmentation, spectral centroid), and an OpenClaw agent on Kimi K3.1 Pro @ Cerebras says what it meant, citing the measurements behind each read. Once it starts answering, the whole translation lands in about a second or less. Talk back and it re-synthesizes your words as meows; it remembers each pet between sessions. Race it against the same model on GPUs.
-GitHub Repository: https://github.com/sneldao/babble
-Hosted demo (recorded answers): https://sneldao.github.io/babble/
-Demo Video: (attached)
-
-#KimiOnCerebras @Cerebras @Kimi_Moonshot
+Do not attach the Speed Bounty video to the X or Reddit posts: the rules keep
+the speed-patched OpenClaw out of public demos. It goes in Discord only.
 
 ## Reddit (optional; r/cerebras, flair "Kimi K3.1 Pro Hackathon"; same deadline; upload the video or link YouTube)
 
