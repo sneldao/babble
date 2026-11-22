@@ -38,21 +38,31 @@ Demo Video: (attached)
 
 ## Reddit (optional; r/cerebras, flair "Kimi K3.1 Pro Hackathon"; same deadline; upload the video or link YouTube)
 
-Title: Babble — a real-time interpreter for your cat, running Kimi K3.1 Pro on Cerebras
+Saved as a draft on Reddit (r/Cerebras → Create → Drafts) with the flair set.
+Add the video with the editor's video button, or paste a YouTube link.
 
-Body: Point your mic at your cat (or dog, or baby). No pet nearby? Upload a
-video: it reads the sound and looks at the frame from the loudest moment. The browser does real
-DSP on the vocalization — f0 contour, call segmentation, envelope, spectral
-centroid — and sends it to an OpenClaw agent backed by Kimi K3.1 Pro on
-Cerebras. The agent classifies the call, shows the evidence it used ("rising
-contour; 2 calls; median f0 600 Hz") and speaks for the animal. Reply in the
-chat box and it vocalizes your message back as synthetic meows/barks via
-WebAudio; the animal hears you in the same OpenClaw session, and the agent
-keeps notes on each pet for next time. Flip on race to watch the same model
-decode on Cerebras and on GPUs side by side.
+Title: Babble: a translator for your cat or dog, running Kimi K3.1 Pro on Cerebras through OpenClaw
+
+Body:
+
+Babble translates your pet. Point a mic at your cat or dog, or drop in a video of them, and it tells you what they meant.
+
+How it works:
+
+- The browser measures the actual sound: pitch contour, number of calls, loudness, spectral centroid. You watch it being drawn as the clip plays.
+- Those measurements, plus a frame from the loudest moment of the video, go to an OpenClaw agent running Kimi K3.1 Pro on Cerebras.
+- The agent classifies the call, shows the evidence it used (for example "2 prolonged calls; falling contour; crouched posture at the loudest moment") and speaks for the animal.
+- Type a reply and it voices your words back as synthetic meows or barks. The animal answers in the same OpenClaw session, and the agent keeps notes on each pet for next time.
+
+A video of Charlie the cat on a shed roof came back as: "I'm stuck up here and I don't like it. Stop filming and help me down."
+
+On speed: the app shows queue wait and decode time separately. In most of our live runs the whole translation streamed in under a second once Kimi K3.1 Pro started answering on Cerebras; the wait in the shared trial queue before that is the slow part. There is also a mode that runs the same model on a GPU provider side by side.
+
+Try it: https://sneldao.github.io/babble/ (hosted demo; the samples play recorded real answers, and your own uploads are measured and drawn, but live translation needs the local build)
 
 Repo: https://github.com/sneldao/babble
-Hosted demo (plays the recorded real responses): https://sneldao.github.io/babble/
+
+Built for the Cerebras x Kimi K3.1 Pro x OpenClaw weekend hackathon.
 
 ## Speed bounty (Discord #share-your-demo)
 
