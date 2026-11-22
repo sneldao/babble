@@ -277,9 +277,16 @@
   .ctl-group { gap: 6px; }
   .ctl-group + .ctl-group { padding-left: 12px; }
   .ctl-reply { flex: 1 1 80px; min-width: 0; }
+  .ctl-reply .ctl-input { min-width: 220px; }
   .ctl-listen { padding: 0 18px; }
   .ctl-btn { padding: 0 10px; }
   .ctl-segbtn { padding: 0 8px; }
   .ctl-switch { padding: 0 4px; }
   .ctl-input { padding: 0 10px; }
+}
+
+@media (min-width: 1200px) and (max-width: 1599.98px) {
+  #controls { padding-left: 12px; padding-right: 12px; }
+  .ctl-pet-lbl { display: none; }
+  .ctl-pet-in { width: 6ch; }
 }

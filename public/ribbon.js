@@ -106,6 +106,7 @@ export function mount(el, stage) {
     failed: false,
     failReason: "",
     raceOn: false,
+    evidence: null,     // cerebras header citation string, or null
     live: null,         // { analyser, startedAt, durationMs, fq, raf, lastP }
     liveImg: null,      // offscreen canvas LIVE_COLS x LIVE_ROWS
     specImg: null,      // offscreen canvas nCols x SPEC_ROWS
@@ -405,6 +406,18 @@ export function mount(el, stage) {
       }
     }
 
+    // HUD right readout, computed early so label placement can dodge it.
+    const rightWord = S.failed ? `decode failed · capture kept` : stateWord();
+    const right = rightWord + (S.raceOn ? " · race" : "");
+    ctx.font = `10px ${MONO}`;
+    const rtw = ctx.measureText(right).width;
+    const rightX = w - 12 - rtw;
+
+    // Evidence citations from the cerebras header: a cited frequency lands as
+    // a marker on the pitch axis, a cited call count emphasises brackets.
+    const evHz = S.evidence?.match(/(\d{2,4})\s*Hz/i)?.[1];
+    const evCalls = S.evidence?.match(/(\d+)\s*calls?/i)?.[1];
+
     // Segment call brackets. Labels stagger across rows so adjacent calls
     // stay legible; on narrow plots they fall back to a compact form.
     const segs = S.features?.segments || [];
@@ -429,6 +442,7 @@ export function mount(el, stage) {
     };
     let { items, worst } = pack(full);
     if (worst > 2) ({ items } = pack(compact)); // narrow plot: short labels
+    const emphasise = evCalls != null && +evCalls === segs.length && +evCalls > 0 ? +evCalls : 0;
     for (const { sg, i, label, lx, row } of items) {
       const x0 = xFor(sg.startMs ?? 0), x1 = xFor(sg.endMs ?? sg.durMs ?? 0);
       const y = PAD.t + ph + 22;
@@ -439,14 +453,39 @@ export function mount(el, stage) {
       ctx.moveTo(x0, y); ctx.lineTo(x0, y + 4);
       ctx.moveTo(x1, y); ctx.lineTo(x1, y + 4);
       ctx.stroke();
-      ctx.fillStyle = C.ink;
+      ctx.fillStyle = i < emphasise ? C.signal : C.ink;
       ctx.fillText(label, lx, y + 11 + Math.min(row, 1) * 11);
+    }
+
+    // Cited frequency: a faint full-width tick on the pitch axis + mono label.
+    if (evHz != null) {
+      const y = yFor(+evHz);
+      if (y > PAD.t + 6 && y < PAD.t + ph - 4) {
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = C.signal;
+        ctx.fillRect(PAD.l, y - 1, pw, 2);
+        ctx.restore();
+        const lbl = `${+evHz} Hz`;
+        const lw = ctx.measureText(lbl).width;
+        ctx.font = `10px ${MONO}`;
+        ctx.fillStyle = C.signal;
+        ctx.fillText(lbl, PAD.l + pw - lw - 4, y - 5);
+      }
     }
 
     // Arrival marks: proof of the speed claim. Marks < 90 css px apart get
     // one combined "words a–b s" label over a bracket; the second close
     // label otherwise drops to a lower row.
-    const markPlaced = [];
+    // Seed the collision set with the HUD right readout and the "after the
+    // sound" zone label so far-right mark labels (e.g. a long "… · replay"
+    // one) drop below them instead of overprinting.
+    const markPlaced = [{ x: rightX - 6, x1: w - 6 }];
+    const durMs0 = S.capture?.durationMs || 0;
+    if (S.capture && ax > durMs0 + 1) {
+      const zx = Math.min(xFor(durMs0) + 4, PAD.l + pw - 92);
+      markPlaced.push({ x: zx - 6, x1: zx + 96 });
+    }
     const markGroups = [];
     for (const m of [...S.marks].sort((a, b) => a.ms - b.ms)) {
       const x = xFor(m.ms);
@@ -573,13 +612,17 @@ export function mount(el, stage) {
     }
     ctx.fillStyle = C.ink2;
     ctx.font = `10px ${MONO}`;
-    const range = sp2.rangeHz ? `${sp2.rangeHz[0]}–${sp2.rangeHz[1]} Hz` : "";
-    ctx.fillText(`RIBBON · ${sp2.label || S.species} ${range} · 80–4k log`, 12, 12);
-    let right = S.failed ? `decode failed · capture kept` : stateWord();
-    if (S.raceOn) right += " · race";
-    const rtw = ctx.measureText(right).width;
+    let title = S.evidence
+      ? `heard: ${S.evidence}`
+      : `RIBBON · ${sp2.label || S.species} ${sp2.rangeHz ? `${sp2.rangeHz[0]}–${sp2.rangeHz[1]} Hz` : ""} · 80–4k log`;
+    const titleMax = rightX - 8 - 12;
+    while (title.length > 8 && ctx.measureText(title).width > titleMax) {
+      title = title.slice(0, title.lastIndexOf(" ", Math.max(8, title.length - 8))) || title.slice(0, -4);
+      if (!title.endsWith("…")) title += "…";
+    }
+    ctx.fillText(title, 12, 12);
     ctx.fillStyle = S.failed ? C.warn : C.ink2;
-    ctx.fillText(right, w - 12 - rtw, 15);
+    ctx.fillText(right, rightX, 15);
 
     // Idle / empty states are never a blank box.
     if (!S.capture && !S.talk) {
@@ -601,7 +644,7 @@ export function mount(el, stage) {
     if (S.settling) return "settling";
     if (S.specImg) return "settled";
     if (S.live) return "live";
-    return "queued";
+    return "waiting";
   }
 
   function resetSession(source, startedAt, durationMs, analyser) {
@@ -616,6 +659,7 @@ export function mount(el, stage) {
     S.talk = null;
     S.failed = false;
     S.raceOn = false;
+    S.evidence = null;
     S.specImg = null;
     S.playP = -1;
     S.liveImg = document.createElement("canvas");
@@ -713,6 +757,12 @@ export function mount(el, stage) {
   }
 
   stage.on("interpret:done", (d) => markLastWord(d.lane, d.replay));
+
+  stage.on("interpret:header", (d) => {
+    if (d.lane !== "cerebras") return;
+    S.evidence = typeof d.evidence === "string" && d.evidence.trim() ? d.evidence.trim() : null;
+    draw();
+  });
 
   stage.on("interpret:error", (d) => {
     if (d.lane !== "cerebras") return;

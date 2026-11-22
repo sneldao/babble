@@ -27,9 +27,10 @@
   letter-spacing: 0.08em;
 }
 .telemetry-text div { min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.telemetry-text div.telemetry-stats { white-space: normal; overflow: visible; }
 
 @media (max-width: 899.98px) {
-  #telemetry { flex-direction: row; align-items: center; }
+  #telemetry { flex-direction: row; align-items: center; min-height: 104px; }
   .telemetry-canvas { width: 46%; height: 64px; }
   .telemetry-text { min-height: 0; }
 }

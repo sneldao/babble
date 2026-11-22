@@ -16,21 +16,24 @@ function hash01(x, y) {
 }
 
 const fmtS = (ms) => `${(ms / 1000).toFixed(2)} s`;
+const fmtFig = (s) => s < 1 ? s.toFixed(2) : s < 10 ? s.toFixed(1) : String(Math.round(s));
 
 export function mount(el, stage) {
   el.innerHTML = "";
   const canvas = document.createElement("canvas");
   canvas.className = "telemetry-canvas";
   canvas.setAttribute("role", "img");
-  canvas.setAttribute("aria-label", "Telemetry: decode speed in tokens per second");
+  canvas.setAttribute("aria-label", "Telemetry: decode time in seconds");
   const text = document.createElement("div");
   text.className = "telemetry-text";
   const line1 = document.createElement("div");
   const line2 = document.createElement("div");
+  line2.className = "telemetry-stats";
   const line3 = document.createElement("div");
+  line3.className = "telemetry-stats";
   const tok = document.createElement("div");
   tok.className = "telemetry-unit";
-  tok.textContent = "TOK/S";
+  tok.textContent = "S TO DECODE";
   text.append(tok, line1, line2, line3);
   const status = document.createElement("p");
   status.className = "visually-hidden";
@@ -44,7 +47,7 @@ export function mount(el, stage) {
 
   const lanes = { cerebras: blank(), rival: blank() };
   function blank() {
-    return { phase: "idle", tps: null, queueMs: null, decodeMs: null, tokens: null, reasoningTokens: null, replay: false, t0: 0, failed: false };
+    return { phase: "idle", tps: null, tpsEstimated: true, queueMs: null, decodeMs: null, streamT0: 0, tokens: null, reasoningTokens: null, replay: false, t0: 0, failed: false };
   }
 
   let raceOn = false;
@@ -79,6 +82,14 @@ export function mount(el, stage) {
   const W = () => canvas.width / Math.min(2, devicePixelRatio || 1);
   const H = () => canvas.height / Math.min(2, devicePixelRatio || 1);
   const say = (m) => { status.textContent = m; };
+  // Decode time for the matrix: the done event's decodeMs once done, else a
+  // live count-up from the first delta while streaming.
+  function decodeSecs(c) {
+    if (c.replay) return null;
+    if (c.decodeMs != null) return c.decodeMs / 1000;
+    if (c.phase === "streaming" && c.streamT0) return (performance.now() - c.streamT0) / 1000;
+    return null;
+  }
 
   function paintMask() {
     // Same dpr drift guard as the ribbon: a backing store fitted under a
@@ -96,8 +107,8 @@ export function mount(el, stage) {
     mctx.fillStyle = "#fff";
     mctx.fillRect(0, 0, w, h);
     const c = lanes.cerebras;
-    const tps = c.replay ? null : c.tps;
-    if (tps == null || !isFinite(tps)) {
+    const secs = decodeSecs(c);
+    if (secs == null || !isFinite(secs)) {
       // No figure: two clean dashes as plain bars of lit dots, 3 cells thick,
       // vertically centred — never glyph text, which resamples into noise.
       const bh = CELL * 3, bw = Math.min(36, w * 0.16);
@@ -109,19 +120,29 @@ export function mount(el, stage) {
       mctx.fillRect(x0 + bw + gap, y, bw, bh);
       return;
     }
-    const big = String(Math.round(tps));
-    // Digits only, as large as fits; the TOK/S unit is DOM text below.
+    const fig = fmtFig(secs);
+    const [intPart, fracPart] = fig.split(".");
+    // Digits as large as fits, with a real 2x2-dot decimal point — the "." of
+    // a glyph at this resample size is illegible. Unit label is DOM text below.
     let fs = Math.min(56, h - 12);
     mctx.fillStyle = "#000";
     mctx.textBaseline = "middle";
+    const pointW = CELL * 3.5;
+    let iw = 0, fw = 0;
     for (let pass = 0; pass < 4; pass++) {
       mctx.font = `700 ${fs}px ${MONO}`;
-      const bw = mctx.measureText(big).width;
-      if (12 + bw + 10 <= w || fs <= 18) break;
-      fs *= (w - 22) / bw;
+      iw = mctx.measureText(intPart).width;
+      fw = fracPart ? mctx.measureText(fracPart).width : 0;
+      if (12 + iw + (fracPart ? pointW : 0) + fw + 10 <= w || fs <= 18) break;
+      fs *= (w - 22 - (fracPart ? pointW : 0)) / (iw + fw);
     }
     mctx.font = `700 ${fs}px ${MONO}`;
-    mctx.fillText(big, 12, h / 2 + 1);
+    mctx.fillText(intPart, 12, h / 2 + 1);
+    if (fracPart) {
+      const ps = CELL * 2; // 2x2 dots
+      mctx.fillRect(12 + iw + pointW / 2 - ps / 2, h / 2 + fs * 0.32 - ps / 2, ps, ps);
+      mctx.fillText(fracPart, 12 + iw + pointW, h / 2 + 1);
+    }
   }
 
   function drawDots(reveal) {
@@ -149,10 +170,14 @@ export function mount(el, stage) {
     }
   }
 
+  function tpsText(L) {
+    if (L.tps == null) return "";
+    return `${Math.round(L.tps)} tok/s${L.tpsEstimated !== false ? " est." : ""}`;
+  }
   function renderText(now) {
     const c = lanes.cerebras;
     if (c.phase === "queued") {
-      line1.textContent = `QUEUE ${fmtS(now - c.t0)}`;
+      line1.textContent = `WAIT ${fmtS(now - c.t0)}`;
       line1.style.color = colors.signal;
     } else if (c.failed && c.phase === "error") {
       line1.textContent = "decode failed · capture kept";
@@ -161,27 +186,43 @@ export function mount(el, stage) {
       line1.textContent = "REPLAY · recorded response";
       line1.style.color = colors.ink2;
     } else if (c.queueMs != null) {
-      line1.textContent = `queue ${fmtS(c.queueMs)} · decode ${fmtS(c.decodeMs ?? 0)}`;
+      line1.textContent = `wait ${fmtS(c.queueMs)}`;
+      line1.style.color = colors.ink2;
+    } else if (c.phase === "streaming") {
+      line1.textContent = `wait ${fmtS(now - c.t0)}`;
       line1.style.color = colors.ink2;
     } else {
       line1.textContent = "ready";
       line1.style.color = colors.ink2;
     }
-    line2.textContent = c.replay ? "recorded reply · no tok/s"
-      : c.tokens != null ? `${c.tokens} tokens${c.reasoningTokens ? ` + ${c.reasoningTokens} thinking` : ""}`
-      : "";
+    if (c.replay) {
+      line2.textContent = c.decodeMs != null ? `recorded decode ${fmtS(c.decodeMs)}` : "recorded reply";
+    } else {
+      const parts = [];
+      if (c.phase === "streaming" || c.tps != null) { const t = tpsText(c); if (t) parts.push(t); }
+      if (c.tokens != null) parts.push(`${c.tokens} tokens${c.reasoningTokens > 0 ? ` + ${c.reasoningTokens} thinking` : ""}`);
+      line2.textContent = parts.join(" · ");
+    }
     line2.style.color = colors.ink2;
     if (raceOn) {
       const g = lanes.rival;
-      const gbig = g.failed && g.phase === "error" ? "gpu offline"
-        : g.tps != null ? `gpu ${Math.round(g.tps)} tok/s` : "gpu —";
-      const gsmall = g.phase === "queued" ? `queue ${fmtS(now - g.t0)}`
-        : g.queueMs != null ? `queue ${fmtS(g.queueMs)} · decode ${fmtS(g.decodeMs ?? 0)}` : "";
-      line3.textContent = gsmall ? `${gbig} · ${gsmall}` : gbig;
+      if (g.failed && g.phase === "error") {
+        line3.textContent = "gpu offline";
+      } else if (g.phase === "queued") {
+        line3.textContent = `gpu · wait ${fmtS(now - g.t0)}`;
+      } else {
+        const parts = [];
+        if (g.decodeMs != null) parts.push(`decode ${fmtS(g.decodeMs)}`);
+        else if (g.phase === "streaming" && g.streamT0) parts.push(`decode ${fmtS(now - g.streamT0)}`);
+        if (g.queueMs != null) parts.push(`wait ${fmtS(g.queueMs)}`);
+        const t = tpsText(g); if (t) parts.push(t);
+        line3.textContent = `gpu  ${parts.join(" · ")}`;
+      }
       line3.style.color = colors.rival;
     } else line3.textContent = "";
   }
 
+  let lastPaint = 0;
   function frame() {
     raf = 0;
     const now = performance.now();
@@ -190,10 +231,14 @@ export function mount(el, stage) {
       reveal = Math.min(1, (now - bootT0) / BOOT_MS);
       if (reveal >= 1) booted = true;
     }
-    paintMask();
-    drawDots(reveal);
-    renderText(now);
-    if (!booted || lanes.cerebras.phase === "queued" || (raceOn && lanes.rival.phase === "queued")) {
+    if (now - lastPaint >= 100) { // cap the live count-up at ~10 updates/s
+      lastPaint = now;
+      paintMask();
+      drawDots(reveal);
+      renderText(now);
+    }
+    const live = (L) => L.phase === "queued" || L.phase === "streaming";
+    if (!booted || live(lanes.cerebras) || (raceOn && live(lanes.rival))) {
       raf = requestAnimationFrame(frame);
     }
   }
@@ -214,7 +259,7 @@ export function mount(el, stage) {
     if (d.lane === "cerebras") {
       lanes.cerebras = { ...blank(), phase: "queued", t0: d.t0 || performance.now() };
       lanes.rival = blank();
-      say("Queued. Counting queue time.");
+      say("Waiting for the model.");
     } else if (d.lane === "rival") {
       raceOn = true;
       lanes.rival = { ...blank(), phase: "queued", t0: d.t0 || performance.now() };
@@ -225,8 +270,10 @@ export function mount(el, stage) {
   stage.on("interpret:delta", (d) => {
     const L = lanes[d.lane];
     if (!L) return;
+    if (L.phase !== "streaming") L.streamT0 = d.t || performance.now();
     L.phase = "streaming";
     if (typeof d.tps === "number") L.tps = d.tps;
+    if (d.tpsEstimated !== undefined) L.tpsEstimated = !!d.tpsEstimated;
     if (d.lane === "cerebras") say(`Streaming at ${Math.round(L.tps || 0)} tokens per second.`);
     kick();
   });
@@ -239,10 +286,11 @@ export function mount(el, stage) {
     L.decodeMs = d.decodeMs ?? null;
     L.tokens = d.tokens ?? null;
     L.reasoningTokens = d.reasoningTokens ?? null;
+    L.tpsEstimated = d.tokensEstimated !== false;
     if (typeof d.tps === "number") L.tps = d.tps;
     L.replay = !!d.replay;
     if (d.lane === "cerebras") {
-      say(d.replay ? "Replay finished." : `Done. Queue ${fmtS(L.queueMs || 0)}, decode ${fmtS(L.decodeMs || 0)}.`);
+      say(d.replay ? "Replay finished." : `Done. Wait ${fmtS(L.queueMs || 0)}, decode ${fmtS(L.decodeMs || 0)}.`);
     }
     kick();
   });
