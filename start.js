@@ -5,6 +5,7 @@
 
 import { unlock } from "./audio.js";
 import { mount as mountChar } from "./character.js";
+import { gooSeg } from "./goo.js";
 
 export function mount(el, st) {
   el.innerHTML = "";
@@ -30,6 +31,13 @@ export function mount(el, st) {
 
   const chips = document.createElement("div");
   chips.className = "start-chips";
+  const chipsGoo = gooSeg(chips);
+  function reflectChips(sp) {
+    for (const c of chips.querySelectorAll("[data-sp]")) c.setAttribute("aria-pressed", String(c.dataset.sp === sp));
+    chips.style.setProperty("--goo-color", `color-mix(in srgb, var(--${sp}) 24%, var(--paper))`);
+    const b = chips.querySelector(`[data-sp="${sp}"]`);
+    if (b) chipsGoo.moveTo(b);
+  }
   for (const sp of ["cat", "dog", "infant"]) {
     const b = document.createElement("button");
     b.type = "button";
@@ -37,12 +45,10 @@ export function mount(el, st) {
     b.dataset.sp = sp;
     b.textContent = sp;
     b.setAttribute("aria-pressed", String(st.species === sp));
-    b.addEventListener("click", () => {
-      st.setSpecies(sp);
-      for (const c of chips.children) c.setAttribute("aria-pressed", String(c === b));
-    });
+    b.addEventListener("click", () => st.setSpecies(sp));
     chips.appendChild(b);
   }
+  reflectChips(st.species);
 
   const btn = document.createElement("button");
   btn.type = "button";
@@ -87,9 +93,7 @@ export function mount(el, st) {
   btn.addEventListener("click", start);
 
   const unsubs = [
-    st.on("species", ({ species }) => {
-      for (const c of chips.children) c.setAttribute("aria-pressed", String(c.dataset.sp === species));
-    }),
+    st.on("species", ({ species }) => reflectChips(species)),
   ];
   return () => unsubs.forEach((u) => u());
 }

@@ -100,9 +100,11 @@
 .ctl-segbtn:last-child { border-right: 0; }
 .ctl-segbtn:hover { color: var(--ink); }
 .ctl-segbtn[aria-pressed="true"] { color: var(--ink); background: var(--paper-2); }
-.ctl-species .ctl-segbtn[data-sp="cat"][aria-pressed="true"] { color: var(--cat); box-shadow: inset 0 -2px 0 var(--cat); }
-.ctl-species .ctl-segbtn[data-sp="dog"][aria-pressed="true"] { color: var(--dog); box-shadow: inset 0 -2px 0 var(--dog); }
-.ctl-species .ctl-segbtn[data-sp="infant"][aria-pressed="true"] { color: var(--infant); box-shadow: inset 0 -2px 0 var(--infant); }
+/* Species: the goo pill (see goo.js) is the indicator — coloured text only. */
+.ctl-species .ctl-segbtn[data-sp="cat"] { --chip: var(--cat); }
+.ctl-species .ctl-segbtn[data-sp="dog"] { --chip: var(--dog); }
+.ctl-species .ctl-segbtn[data-sp="infant"] { --chip: var(--infant); }
+.ctl-species .ctl-segbtn[aria-pressed="true"] { color: var(--chip); background: none; }
 
 .ctl-switch {
   display: inline-flex;

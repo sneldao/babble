@@ -1,0 +1,28 @@
+/* Gooey indicator layer — see goo.js. Technique adapted from
+   codrops/GooeyStickyMenu (MIT). */
+
+.goo-seg { position: relative; }
+
+.goo-layer {
+  position: absolute;
+  inset: 0;
+  filter: url(#babble-goo);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+  z-index: 0;
+}
+.goo-layer.on { opacity: 1; }
+
+.goo-pill,
+.goo-trail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: var(--goo-color, color-mix(in srgb, var(--ink) 16%, var(--paper)));
+  border-radius: 999px;
+  will-change: transform;
+}
+
+/* segment buttons float above the goo so the filter can blend behind them */
+.goo-seg > :not(.goo-layer) { position: relative; z-index: 1; }

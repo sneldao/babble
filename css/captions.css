@@ -48,6 +48,15 @@
   text-overflow: ellipsis;
 }
 .cap-lane.has-header .cap-head { opacity: 1; }
+.cap-head { transform-origin: left center; }
+@media (prefers-reduced-motion: no-preference) {
+  .cap-head.stamp { animation: cap-stamp 420ms var(--ease-spring); }
+}
+@keyframes cap-stamp {
+  0% { transform: scale(1.18) rotate(-0.7deg); opacity: 0; }
+  60% { transform: scale(0.98); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
 .cap-head .cap-conf { color: var(--ink-2); }
 
 .cap-ev {

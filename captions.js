@@ -362,6 +362,10 @@ export function mount(el, st) {
     stopQueue(L);
     L.status.textContent = "";
     L.el.classList.add("has-header");
+    // Stamped landing for the verdict line; restart the animation on update.
+    L.head.classList.remove("stamp");
+    void L.head.offsetWidth;
+    L.head.classList.add("stamp");
     const parts = [];
     if (d.vocal) parts.push(String(d.vocal).toUpperCase());
     if (d.mood) parts.push(String(d.mood));

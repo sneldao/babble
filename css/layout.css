@@ -53,6 +53,29 @@
   position: relative;
 }
 
+/* One-time stage entrance: while the start dialog is up (state boot), the
+   stage sits hidden below the fold of the dialog; when it lifts, each piece
+   lands in sequence. Gated on the dialog's presence so the dev harness
+   (no start screen, same boot state) is never hidden. */
+body[data-state="boot"]:has(> #start .start-dialog) #stage > * {
+  opacity: 0;
+  transform: translateY(18px);
+}
+body[data-state="boot"]:has(> #start .start-dialog) #character {
+  transform: translateY(10px) scale(0.93);
+}
+@media (prefers-reduced-motion: no-preference) {
+  #stage > * {
+    transition: opacity var(--dur-3) var(--ease-out), transform 620ms var(--ease-spring);
+  }
+  #masthead  { transition-delay: 40ms; }
+  #character { transition-delay: 130ms; }
+  #captions  { transition-delay: 220ms; }
+  #ribbon    { transition-delay: 320ms; }
+  #telemetry { transition-delay: 400ms; }
+  #controls  { transition-delay: 480ms; }
+}
+
 #camView {
   display: none;
 }

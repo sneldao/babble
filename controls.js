@@ -4,6 +4,7 @@
 // spring integrator (MIT, argofowl).
 
 import { setMuted } from "./sfx.js";
+import { gooSeg } from "./goo.js";
 
 const SAMPLES = [
   ["cat-pleading.wav", "cat", "Cat · pleading meow"],
@@ -94,6 +95,8 @@ export function mount(el, st) {
     b.addEventListener("click", () => st.setSpecies(sp));
     spWrap.appendChild(b);
   }
+  // Gooey indicator under the species buttons (see goo.js).
+  const goo = gooSeg(spWrap);
   const raceBtn = B("ctl-switch", "", { role: "switch", "aria-checked": "false", "aria-label": "Race a GPU" });
   const raceTrack = document.createElement("span");
   raceTrack.className = "ctl-switch-track";
@@ -309,7 +312,10 @@ export function mount(el, st) {
   const petNarrow = matchMedia("(min-width: 1200px) and (max-width: 1599.98px)");
   petNarrow.addEventListener?.("change", reflectSpecies);
   function reflectSpecies() {
-    for (const c of spWrap.children) c.setAttribute("aria-pressed", String(c.dataset.sp === st.species));
+    for (const c of spWrap.querySelectorAll(".ctl-segbtn")) c.setAttribute("aria-pressed", String(c.dataset.sp === st.species));
+    spWrap.style.setProperty("--goo-color", `color-mix(in srgb, var(--${st.species}) 28%, var(--paper))`);
+    const spBtn = spWrap.querySelector(`.ctl-segbtn[data-sp="${st.species}"]`);
+    if (spBtn) goo.moveTo(spBtn);
     // The visible "PET NAME" label hides below 1600px; keep the field
     // identifiable via its placeholder there.
     petIn.placeholder = petNarrow.matches ? "Pet name" : st.species[0].toUpperCase() + st.species.slice(1);
