@@ -68,7 +68,7 @@ them; do not edit it.
 
 `public/style.css` is deleted by A in the scaffold commit.
 
-## Current status (updated 22 Nov, 12:56 UTC)
+## Current status (updated 22 Nov, 13:52 UTC)
 
 - **Everything is merged to `main`.** `main`, `redesign` and
   `redesign-integration` all point at the same commit; the per-developer
@@ -101,6 +101,22 @@ them; do not edit it.
   In the hosted demo an upload is measured and drawn, then says the live
   translation needs the local build (neutral wording, not an error).
   Not tested: a real phone camera roll, Safari, and a video of a real animal.
+- **Pitch tracking for real recordings (22 Nov, 13:52 UTC).** A real outdoor video
+  (a cat on a roof, quiet audio, a steady hum at about half the cat's pitch)
+  showed the original per-frame autocorrelation reading 222 Hz for a 450 Hz
+  call. `analyzeBuffer` now has two paths. Mic and uploads use a
+  noise-tolerant tracker: the mean spectrum of the quietest tenth of the clip
+  is subtracted as background, each frame's autocorrelation candidates are
+  ranked by the energy in their first five harmonics, a path search stops the
+  line jumping an octave, and calls under 60 ms are dropped. On that video it
+  now reads two calls at 429 Hz falling and 397 Hz, which matches a
+  spectrogram made separately with ffmpeg. Sample clips pass
+  `{ pinned: true }` and keep the original tracker, because their recorded
+  replays quote its numbers; the pinned path is byte-identical to before on
+  all five clips. On the cat samples the two paths agree within a few Hz; on
+  the two dog samples they differ by up to an octave on some barks and
+  neither has been checked against a reference. One real video is the only
+  real-world check so far.
 - **Polish landed:** the GooeyStickyMenu stretch item is in — a goo-filter
   pill (SVG blur + alpha ramp, `public/goo.js`) slides under the active
   species button on the start screen and in the controls. The stage now

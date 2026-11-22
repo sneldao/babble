@@ -399,7 +399,8 @@ async function captureThenRun(promiseCap) {
   const cap = await promiseCap;
   if (!cap) return;
   stage.set("analysing");
-  const features = analyzeBuffer(cap.buffer);
+  // sample clips keep the original tracker: their recorded replays quote its numbers
+  const features = analyzeBuffer(cap.buffer, { pinned: cap.source === "clip" });
   cap.features = features;
   stage.emit("analysis", { features, buffer: cap.buffer });
   if (features.f0Median === 0) {

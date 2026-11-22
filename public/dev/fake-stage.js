@@ -72,7 +72,7 @@ export async function runSession(stage, { clip = "cat-pleading.wav", variant = "
   if (!await wait(Math.min(durationMs, 400), token)) return;
   if (token.id !== runId) return;
   stage.set("analysing");
-  const features = analyzeBuffer(buf);
+  const features = analyzeBuffer(buf, { pinned: true });
   stage.emit("analysis", { features, buffer: buf });
 
   stage.set("queued");
