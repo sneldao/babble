@@ -41,7 +41,11 @@ openclaw config patch --stdin <<JSON5
       },
     },
   },
-  agents: { defaults: { model: { primary: "cerebras/$MODEL_ID" } } },
+  agents: { defaults: {
+    model: { primary: "cerebras/$MODEL_ID" },
+    // x-openclaw-model overrides are rejected unless the model is listed here.
+    modelPolicy: { allow: ["cerebras/$MODEL_ID"] },
+  } },
   gateway: {
     auth: { mode: "token", token: "$GW_TOKEN" },
     http: { endpoints: { chatCompletions: { enabled: true } } },
@@ -79,6 +83,9 @@ if [ -n "${NEBIUS_API_KEY:-}" ]; then
         supportsReasoningEffort: true,
         supportedReasoningEfforts: ["low", "high", "max"],
         reasoningEffortMap: { off: "low", minimal: "low", medium: "high" },
+        // Without this, OpenClaw omits stream_options.include_usage for a
+        // custom endpoint and Nebius returns no token usage.
+        supportsUsageInStreaming: true,
       },
     }],
   } } },
@@ -87,7 +94,10 @@ JSON5
   openclaw agents add babble-gpu --workspace "$PWD/agent-workspace" \
     --model "nebius/moonshotai/Kimi-K3.1-Pro" --non-interactive || true
   openclaw config patch --stdin <<JSON5
-{ agents: { entries: { "babble-gpu": { thinkingDefault: "low", skills: [], tools: { allow: [] } } } } }
+{ agents: {
+  defaults: { modelPolicy: { allow: ["cerebras/$MODEL_ID", "nebius/moonshotai/Kimi-K3.1-Pro"] } },
+  entries: { "babble-gpu": { thinkingDefault: "low", skills: [], tools: { allow: [] } } },
+} }
 JSON5
 fi
 

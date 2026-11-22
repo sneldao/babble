@@ -71,12 +71,20 @@ words. Change the sound and the class changes with it.
 
 ```bash
 export CEREBRAS_API_KEY=csk-...
-export NEBIUS_API_KEY=...            # optional: the GPU race lane
+export NEBIUS_API_KEY=...            # optional: GPU race lane (Nebius Token Factory)
 ./scripts/setup-openclaw.sh          # providers, babble + babble-gpu agents, gateway token
 node server.mjs                      # http://localhost:4319
 ```
 
 Requires OpenClaw (`npm i -g openclaw`), Node ≥ 20, a Cerebras API key.
+
+For a fresh demo setup, the script allows both models when `NEBIUS_API_KEY`
+is set. On an existing gateway, add `nebius/moonshotai/Kimi-K3.1-Pro` to
+`agents.defaults.modelPolicy.allow` without dropping existing entries, and set
+`compat.supportsUsageInStreaming: true` on the Nebius model. The allowlist
+permits Babble's `x-openclaw-model` override; a rejection surfaces as a 400
+upstream error in the `/api/compare` event stream. The compat flag makes
+OpenClaw request usage from Nebius; Babble already requests it from OpenClaw.
 
 ## Demo flow
 
@@ -103,15 +111,19 @@ demo clip (the budget rises to 180 s in this mode).
 
 ## Notes on speed
 
-- The headline figure is **decode time**: first word to last, measured in the
-  browser. It is exact.
-- **Wait** (request to first word) is shown separately and never folded into
+- The headline figure is **decode time**: measured in the browser from the
+  first non-empty content chunk until the response stream closes. It is not
+  provider-side compute time; it includes transport and stream finalization.
+- **Wait** (request to first content chunk) is shown separately and never folded into
   speed. It covers the shared trial endpoint's queue, OpenClaw's retries when
   that queue is full, and the model's hidden thinking: Kimi K3.1 Pro always
   reasons before answering (Babble asks for the lowest effort, `low`).
-- Token counts come from the provider's usage report: visible output tokens,
-  with hidden thinking tokens reported separately. When a provider sends no
-  usage, the figure falls back to characters ÷ 4 and is labelled `est.`.
+- When the final usage chunk arrives, Babble subtracts reported reasoning
+  tokens from completion tokens and shows the reasoning count separately.
+  Otherwise it estimates output tokens from characters divided by four and
+  labels the rate `est.`. Nebius returned usage in the verified race-lane
+  request; no usable streaming usage was observed on the Cerebras trial lane
+  in the earlier check. Live rates are estimates until the stream finishes.
 - Measured on 22 Nov through the gateway: 10-170 s of wait before the first
   word, mostly the overloaded trial queue, then 0.25-0.6 s to decode the
   whole reply. With the 12 s budget, demo clips usually fall back to REPLAY

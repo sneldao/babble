@@ -149,11 +149,23 @@ them; do not edit it.
 - **Failure handling:** 12 s without a first word (8 s mid-stream), an HTTP
   error, or an empty answer falls back to the clip's labelled REPLAY; mic and
   file captures show an error with Retry. Talk-back has no fallback.
-- **Not configured: the GPU race lane.** Agent `babble-gpu` needs
-  `NEBIUS_API_KEY` in the gateway's environment, a gateway restart, then
-  `scripts/setup-openclaw.sh`. Until then the race lane shows
-  "GPU rival offline (not configured)". The rival path is tested against a
-  mock only.
+- **GPU race lane configured and verified (22 Nov, 11:54 UTC).** Agent
+  `babble-gpu` runs `moonshotai/Kimi-K3.1-Pro` on Nebius Token Factory (the
+  global endpoint; the console's regional `us-north1` host also serves the
+  model) with the same workspace as `babble`. Two config details were
+  required, and both are now in `scripts/setup-openclaw.sh`:
+  1. `agents.defaults.modelPolicy.allow` must include
+     `nebius/moonshotai/Kimi-K3.1-Pro`. Without it, OpenClaw rejects the
+     `x-openclaw-model` override with HTTP 400, which Babble reports in the
+     `/api/compare` stream. `rival.available` only confirms the agent is listed.
+  2. Set `compat.supportsUsageInStreaming: true` on the Nebius model. OpenClaw
+     defaulted this off for the Nebius endpoint, so it did not send
+     `stream_options.include_usage` upstream even though Babble requested
+     usage downstream. No gateway code patch was needed.
+  The successful `/api/compare` run logged 68 output tokens, 143 reasoning
+  tokens and `tokensEstimated: false`. The running app lists the rival as
+  available. The earlier Cerebras trial check had no usable streaming usage;
+  that lane's rate was estimated. A live take with both lanes is still pending.
 - **Not tested:** a real microphone capture (automation has no mic).
 - **Checks:** `node scripts/devc-smoke.mjs`, `node scripts/devd-smoke.mjs`,
   `node scripts/ribbon-evidence-test.mjs`.
@@ -167,7 +179,7 @@ them; do not edit it.
 | 1 | Speed bounty post | you (in progress) | Figures fixed: 1,032 TPS p90 server-side, 572 mean on the same run. Draft in `SUBMISSION.md`. |
 | 2 | 60 s demo video | Devin drives; you supply pet videos | Plan is in "Demo video plan" below. Needs 2-3 clips of a real animal calling, the pet's name, and your call on the open decisions. |
 | 3 | `SUBMISSION.md` placeholders | you | Team handle `@<your-handle>` and the video link/attachment. |
-| 4 | GPU race lane — decide | you | Either `NEBIUS_API_KEY` in the gateway env + restart + `scripts/setup-openclaw.sh`, then test the race live (mock-tested only so far), or cut the race claim from the README/SUBMISSION copy. |
+| 4 | GPU race take | you | Nebius is configured and `/api/compare` is verified. Capture a live two-lane take; keep wait and decode separate and leave the `est.` label visible where applicable. |
 | 5 | Real microphone check | you | Mic capture has never run on real hardware; do one LISTEN take against a real animal before filming. |
 | 6 | Cerebras support message | you | Drafted for `#hackathon-support` (queue_exceeded pattern + org TPM question), still unposted. |
 | 7 | Post the drafts | you | X post, Reddit, Discord speed-bounty line — all in `SUBMISSION.md`. |
@@ -187,7 +199,9 @@ A pre-submission review raised four objections. What we found and decided:
 - **The race compared different models on a non-GPU provider with guessed
   tokens.** The rival is now the same model (Kimi K3.1 Pro) at Nebius
   (GPU), routed through a second OpenClaw agent with the same workspace.
-  Tokens come from the provider's usage report; estimates are labelled.
+  Tokens come from the provider's usage report where the endpoint sends one;
+  estimates are labelled. Nebius returned usage after the compat fix; no
+  usable streaming usage was observed on the Cerebras trial lane.
 - **OpenClaw was a pass-through.** The workspace is now the only prompt,
   sessions are real (the agent hears replies), and the agent keeps per-pet
   memory with its own tools at session end. Measured on the live gateway:
