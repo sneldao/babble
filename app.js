@@ -219,7 +219,7 @@ async function captureFile(file) {
 }
 
 // The loudest-moment frame of an uploaded video: a detached seek + grab,
-// bounded at 1500 ms; on failure the run just proceeds without an image.
+// bounded at 4 s per step; on failure the run just proceeds without an image.
 async function grabVideoFrame(file, fromSec, tMs) {
   const url = URL.createObjectURL(file);
   try {
@@ -229,12 +229,12 @@ async function grabVideoFrame(file, fromSec, tMs) {
     v.preload = "auto";
     v.src = url;
     await new Promise((resolve, reject) => {
-      const to = setTimeout(() => reject(new Error("video load")), 1500);
+      const to = setTimeout(() => reject(new Error("video load")), 4000);
       v.onloadeddata = () => { clearTimeout(to); resolve(); };
       v.onerror = () => { clearTimeout(to); reject(new Error("video load")); };
     });
     const dataUrl = await new Promise((resolve) => {
-      const to = setTimeout(() => resolve(null), 1500);
+      const to = setTimeout(() => resolve(null), 4000);
       v.onseeked = () => {
         clearTimeout(to);
         try {
