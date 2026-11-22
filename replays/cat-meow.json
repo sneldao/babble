@@ -1,0 +1,42 @@
+{
+  "clip": "cat-meow.wav",
+  "species": "cat",
+  "header": {
+    "vocal": "protest",
+    "mood": "thoroughly annoyed",
+    "confidence": 0.86
+  },
+  "deltas": [
+    {
+      "tMs": 0.29999999701976776,
+      "text": "You"
+    },
+    {
+      "tMs": 30.19999999552965,
+      "text": " have"
+    },
+    {
+      "tMs": 54.29999999701977,
+      "text": " ignored me"
+    },
+    {
+      "tMs": 57.69999999552965,
+      "text": " four times. Attend to me now; my patience"
+    },
+    {
+      "tMs": 59.79999999701977,
+      "text": " is"
+    },
+    {
+      "tMs": 60.899999998509884,
+      "text": " officially gone"
+    },
+    {
+      "tMs": 70.69999999552965,
+      "text": "."
+    }
+  ],
+  "queueMs": 24125.59999999404,
+  "decodeMs": 600.7000000029802,
+  "recordedAt": "2026-11-22T07:37:35.553Z"
+}
