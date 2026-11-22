@@ -104,9 +104,6 @@ them; do not edit it.
   is actually sent. Backup: `~/.openclaw/openclaw.json.bak-babble`. Agent
   `babble-gpu` is not configured yet: it needs `NEBIUS_API_KEY` in the
   gateway's environment, a gateway restart, then `scripts/setup-openclaw.sh`.
-- **`scripts/devd-smoke.mjs` imports from `../../babble-d/public/`**, so it
-  tests the `babble-d` worktree, not the checkout it runs from. Point it at
-  `../public/` before trusting its result.
 - **Recorded replays predate the `EVIDENCE` line**, so their `evidence` is
   `null`. Re-record them to show evidence on REPLAY.
 
