@@ -1,5 +1,13 @@
 // Babble acoustics — browser-side feature extraction.
 // Turns an AudioBuffer into the structured summary the interpreter reads.
+//
+// Dev B (docs/redesign/dev-b-ribbon.md). Contract note: every field the old
+// analyzeBuffer returned is preserved byte-for-byte (server.mjs reads them).
+// Added: track { hopMs, f0, rms } with one entry per analysis frame (f0 is 0
+// when unvoiced, so the pitch line can be aligned to time), and startMs/endMs
+// on each segment.
+
+import { getCtx } from "./audio.js";
 
 export function analyzeBuffer(buf) {
   const sr = buf.sampleRate;
@@ -16,10 +24,15 @@ export function analyzeBuffer(buf) {
   const gapFrames = Math.round(250 / frameMs);
   const segs = [];
   let cur = null;
-  for (const f of frames) {
+  for (let idx = 0; idx < frames.length; idx++) {
+    const f = frames[idx];
     if (f.f0 > 0 && f.rms > 0.01) {
       if (cur) cur.push(f);
-      else cur = [f];
+      else {
+        cur = [f];
+        cur.startIdx = idx;
+      }
+      cur.endIdx = idx;
       cur.gap = 0;
     } else if (cur) {
       if (++cur.gap > gapFrames) {
@@ -31,8 +44,11 @@ export function analyzeBuffer(buf) {
   if (cur) segs.push(cur);
   const segments = segs.map((s) => {
     const f0s = s.map((f) => f.f0).sort((a, b) => a - b);
+    const durMs = Math.round(s.length * frameMs);
     return {
-      durMs: Math.round(s.length * frameMs),
+      durMs,
+      startMs: Math.round((s.startIdx ?? 0) * frameMs),
+      endMs: Math.round(((s.endIdx ?? s.length - 1) + 1) * frameMs),
       f0Median: Math.round(f0s[f0s.length >> 1] || 0),
       f0Min: Math.round(f0s[0] || 0),
       f0Max: Math.round(f0s[f0s.length - 1] || 0),
@@ -70,6 +86,11 @@ export function analyzeBuffer(buf) {
     segments: segments.slice(0, 8),
     contour,
     envelope,
+    track: {
+      hopMs: frameMs,
+      f0: frames.map((f) => Math.round(f.f0)),
+      rms: frames.map((f) => +f.rms.toFixed(4)),
+    },
   };
 }
 
@@ -158,33 +179,52 @@ function mean(a) {
   return a.length ? a.reduce((x, y) => x + y) / a.length : 0;
 }
 
-// record `secs` of mic audio → decoded AudioBuffer features
+// Record `secs` of mic audio on the shared context (audio.js owns the only
+// AudioContext). Resolves promptly with a live AnalyserNode so the ribbon can
+// paint while recording; `done` resolves to the captured AudioBuffer.
+//
+// NOTE (Dev B): the capture loop below still uses the deprecated
+// ScriptProcessorNode. An AudioWorklet replacement would be nicer (no
+// destination hookup needed, no main-thread drops) but is not required for
+// correctness, so it stays a possible follow-up, not a blocker.
 export async function captureMic(secs = 2.5, onFrame) {
+  const ctx = getCtx();
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const ctx = new AudioContext();
   const src = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  src.connect(analyser);
   const rec = ctx.createScriptProcessor(2048, 1, 1);
   const chunks = [];
   src.connect(rec);
+  // ScriptProcessor only fires while connected to the destination; the shared
+  // bus stays at unity gain so this is inaudible beyond the live mic feed
+  // already in the room. A worklet would remove this hookup.
   rec.connect(ctx.destination);
   rec.onaudioprocess = (e) => {
     const d = e.inputBuffer.getChannelData(0);
     chunks.push(new Float32Array(d));
     onFrame?.(d);
   };
-  await new Promise((r) => setTimeout(r, secs * 1000));
-  rec.disconnect();
-  src.disconnect();
-  stream.getTracks().forEach((t) => t.stop());
-  const total = chunks.reduce((a, c) => a + c.length, 0);
-  const pcm = new Float32Array(total);
-  let o = 0;
-  for (const c of chunks) {
-    pcm.set(c, o);
-    o += c.length;
-  }
-  const buf = ctx.createBuffer(1, total, ctx.sampleRate);
-  buf.getChannelData(0).set(pcm);
-  await ctx.close();
-  return buf;
+  const startedAt = performance.now();
+  const durationMs = secs * 1000;
+  const done = new Promise((resolve) => {
+    setTimeout(() => {
+      rec.disconnect();
+      src.disconnect();
+      try { analyser.disconnect(); } catch {}
+      stream.getTracks().forEach((t) => t.stop());
+      const total = chunks.reduce((a, c) => a + c.length, 0);
+      const pcm = new Float32Array(total);
+      let o = 0;
+      for (const c of chunks) {
+        pcm.set(c, o);
+        o += c.length;
+      }
+      const buf = ctx.createBuffer(1, Math.max(1, total), ctx.sampleRate);
+      buf.getChannelData(0).set(pcm);
+      resolve(buf);
+    }, durationMs);
+  });
+  return { analyser, startedAt, durationMs, done };
 }

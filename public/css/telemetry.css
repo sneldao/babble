@@ -1,1 +1,22 @@
-/* telemetry — Dev B */
+/* Speed telemetry — Dev B. One small instrument: the dot-matrix speed readout. */
+
+#telemetry {
+  min-height: 120px;
+  height: 148px;
+}
+
+.telemetry-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+}
+
+@media (max-width: 640px) {
+  #telemetry {
+    min-height: 110px;
+    height: 128px;
+  }
+}

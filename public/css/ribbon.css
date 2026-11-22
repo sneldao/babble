@@ -1,1 +1,33 @@
-/* ribbon — Dev B */
+/* Sound ribbon — Dev B. Lower-third stage: the DSP picture, large and annotated. */
+
+#ribbon {
+  min-height: 280px;
+  height: clamp(240px, 34vh, 340px);
+}
+
+.ribbon-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+}
+
+body[data-state="queued"] #ribbon .ribbon-canvas,
+body[data-state="streaming"] #ribbon .ribbon-canvas {
+  border-left: 2px solid var(--signal);
+}
+
+@media (max-width: 640px) {
+  #ribbon {
+    min-height: 200px;
+    height: 240px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ribbon .ribbon-canvas {
+    border-left-width: 1px;
+  }
+}
