@@ -97,6 +97,14 @@ them; do not edit it.
   gaps), so the same trivial prompt through the gateway took 49-108 s to
   first token. Once admitted, Cerebras generates 60 tokens in 0.06-0.16 s.
   Probes: `/tmp/babble-direct-probe.mjs`, `/tmp/babble-gw-probe.mjs`.
+- **No OpenClaw setting shortens the retry gaps.** The backoff is hardcoded
+  in OpenClaw (`failover-retry-controller.ts`: 1 s base, doubling, 30 s cap,
+  90 s budget); `openclaw config schema` exposes nothing for it. We do not
+  patch OpenClaw.
+- **Window check for live takes:** `node scripts/cerebras-window.mjs` pings
+  Cerebras directly every 2 s and prints OPEN / SLOW / CLOSED. Start a live
+  take when it shows `<- go` (three fast answers in a row). In a 75 s sample
+  the endpoint was open for about 10 s, then closed for about 50 s.
 - **Known layout bug:** in the `done` state the header chip line is clipped
   behind the caption and the first caption line scrolls out of view.
 - **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
