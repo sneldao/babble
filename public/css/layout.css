@@ -112,12 +112,11 @@ body[data-state="boot"] #start {
   }
   #stage {
     height: 100dvh;
-    grid-template-columns: 1fr 1fr minmax(220px, 280px);
-    grid-template-rows: auto minmax(0, 26vh) minmax(0, 1fr) minmax(0, 32vh) auto;
+    grid-template-columns: minmax(240px, 28%) minmax(0, 1fr) minmax(220px, 280px);
+    grid-template-rows: auto minmax(0, 1fr) minmax(0, 34vh) auto;
     grid-template-areas:
       "masthead masthead masthead"
-      "character character telemetry"
-      "captions captions captions"
+      "character captions telemetry"
       "ribbon ribbon ribbon"
       "controls controls controls";
   }

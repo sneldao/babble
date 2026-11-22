@@ -240,6 +240,9 @@
     gap: 8px;
   }
   .ctl-listen-m { min-width: 0; width: 100%; }
+  .ctl-bar .ctl-listen-m, .ctl-bar .ctl-btn { min-height: 48px; height: 48px; }
+  .ctl-reply .ctl-input { min-height: 44px; height: 44px; }
+  .ctl-reply .ctl-send { min-height: 44px; height: 44px; }
   #controls {
     position: sticky;
     bottom: 0;

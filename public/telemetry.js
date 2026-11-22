@@ -28,7 +28,10 @@ export function mount(el, stage) {
   const line1 = document.createElement("div");
   const line2 = document.createElement("div");
   const line3 = document.createElement("div");
-  text.append(line1, line2, line3);
+  const tok = document.createElement("div");
+  tok.className = "telemetry-unit";
+  tok.textContent = "TOK/S";
+  text.append(tok, line1, line2, line3);
   const status = document.createElement("p");
   status.className = "visually-hidden";
   status.setAttribute("aria-live", "polite");
@@ -78,31 +81,47 @@ export function mount(el, stage) {
   const say = (m) => { status.textContent = m; };
 
   function paintMask() {
-    const w = W(), h = H();
+    // Same dpr drift guard as the ribbon: a backing store fitted under a
+    // different devicePixelRatio renders at the wrong scale.
     const dpr = Math.min(2, devicePixelRatio || 1);
+    const cw = Math.max(50, canvas.clientWidth || el.clientWidth);
+    const ch = Math.max(44, canvas.clientHeight || 84);
+    if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
+      size();
+      return;
+    }
+    const w = W(), h = H();
     mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     mctx.clearRect(0, 0, w, h);
     mctx.fillStyle = "#fff";
     mctx.fillRect(0, 0, w, h);
     const c = lanes.cerebras;
-    const big = c.replay ? "REPLAY" : c.tps != null && isFinite(c.tps) ? String(Math.round(c.tps)) : "— —";
-    // Fit "000 TOK/S" inside the box at the largest size that works.
+    const tps = c.replay ? null : c.tps;
+    if (tps == null || !isFinite(tps)) {
+      // No figure: two clean dashes as plain bars of lit dots, 3 cells thick,
+      // vertically centred — never glyph text, which resamples into noise.
+      const bh = CELL * 3, bw = Math.min(36, w * 0.16);
+      const gap = bw * 0.9;
+      const x0 = 12 + Math.max(0, (w - 24 - bw * 2 - gap) / 2);
+      const y = h / 2 - bh / 2;
+      mctx.fillStyle = "#000";
+      mctx.fillRect(x0, y, bw, bh);
+      mctx.fillRect(x0 + bw + gap, y, bw, bh);
+      return;
+    }
+    const big = String(Math.round(tps));
+    // Digits only, as large as fits; the TOK/S unit is DOM text below.
     let fs = Math.min(56, h - 12);
     mctx.fillStyle = "#000";
     mctx.textBaseline = "middle";
     for (let pass = 0; pass < 4; pass++) {
       mctx.font = `700 ${fs}px ${MONO}`;
       const bw = mctx.measureText(big).width;
-      mctx.font = `700 ${Math.min(fs * 0.55, 30)}px ${MONO}`;
-      const lw = mctx.measureText("TOK/S").width;
-      if (12 + bw + 8 + lw + 10 <= w || fs <= 18) break;
-      fs *= (w - 34) / (bw + 8 + lw);
+      if (12 + bw + 10 <= w || fs <= 18) break;
+      fs *= (w - 22) / bw;
     }
     mctx.font = `700 ${fs}px ${MONO}`;
     mctx.fillText(big, 12, h / 2 + 1);
-    const bw = mctx.measureText(big).width;
-    mctx.font = `700 ${Math.min(fs * 0.55, 30)}px ${MONO}`;
-    mctx.fillText("TOK/S", 20 + bw, h / 2 + 3);
   }
 
   function drawDots(reveal) {
