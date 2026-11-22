@@ -149,7 +149,7 @@ body[data-state="boot"] #start {
   #telemetry { grid-area: telemetry; }
   #ribbon    { grid-area: ribbon; }
   #character { height: 38dvh; }
-  #captions  { min-height: 22dvh; }
+  #captions  { min-height: 30dvh; }
   #ribbon    { min-height: 24dvh; }
   #controls {
     grid-area: controls;
