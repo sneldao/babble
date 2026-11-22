@@ -68,16 +68,21 @@ them; do not edit it.
 
 `public/style.css` is deleted by A in the scaffold commit.
 
-## Current status (updated 22 Nov, 10:20 UTC)
+## Current status (updated 22 Nov, 11:46 UTC)
 
-- **Everything is merged to `main`.** `redesign-integration` and `redesign`
-  point at the same commit and are kept for history. The per-developer
-  branches are fully merged and their worktrees removed.
-- **Hosted demo:** the app also runs as a pure static site at
-  https://sneldao.github.io/babble/ — when `api/config` is unreachable (or
-  `?demo` is set), sample clips replay their recorded real responses labelled
-  REPLAY and mic/file/reply show an honest note. Deploy after changing
-  `public/`: `git subtree push --prefix public origin gh-pages`.
+- **Everything is merged to `main`.** `main`, `redesign` and
+  `redesign-integration` all point at the same commit; the per-developer
+  branches are fully merged (deleted locally, kept on `origin` for history)
+  and their worktrees removed.
+- **Hosted demo: live at https://sneldao.github.io/babble/ and verified in a
+  real browser** — clip run reaches `done` with zero console errors, REPLAY
+  labels visible on caption and telemetry. When `api/config` is unreachable
+  (or `?demo` is set), sample clips replay their recorded real responses
+  after a short queue beat, and mic/file/reply show an honest "hosted demo"
+  note. Deployed as a `gh-pages` branch containing `public/` at its root
+  (plus `.nojekyll`); all app URLs are relative for the `/babble/` subpath.
+  **After changing `public/`, redeploy with
+  `git subtree push --prefix public origin gh-pages`.**
 - **Polish landed:** the GooeyStickyMenu stretch item is in — a goo-filter
   pill (SVG blur + alpha ramp, `public/goo.js`) slides under the active
   species button on the start screen and in the controls. The stage now
@@ -120,6 +125,19 @@ them; do not edit it.
   `node scripts/ribbon-evidence-test.mjs`.
 - **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
   `agent-workspace/memory/`) are gitignored.
+
+## Left before submission (22 Nov, 11:46 UTC)
+
+| # | Item | Owner | Notes |
+|---|---|---|---|
+| 1 | Speed bounty post | you (in progress) | Figures fixed: 1,032 TPS p90 server-side, 572 mean on the same run. Draft in `SUBMISSION.md`. |
+| 2 | 60 s demo video | you | Shot list below. Run `node scripts/cerebras-window.mjs` and start each live take on `<- go`; replay fallback covers missed windows. |
+| 3 | `SUBMISSION.md` placeholders | you | Team handle `@<your-handle>` and the video link/attachment. |
+| 4 | GPU race lane — decide | you | Either `NEBIUS_API_KEY` in the gateway env + restart + `scripts/setup-openclaw.sh`, then test the race live (mock-tested only so far), or cut the race claim from the README/SUBMISSION copy. |
+| 5 | Real microphone check | you | Mic capture has never run on real hardware; do one LISTEN take against a real animal before filming. |
+| 6 | Cerebras support message | you | Drafted for `#hackathon-support` (queue_exceeded pattern + org TPM question), still unposted. |
+| 7 | Post the drafts | you | X post, Reddit, Discord speed-bounty line — all in `SUBMISSION.md`. |
+| 8 | Housekeeping | anyone | `shopper-run.png` in the repo root is a committed stray screenshot; the Dev D drafts sit in Trash. |
 
 ## Review follow-ups (M2.5)
 
