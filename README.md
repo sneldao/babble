@@ -62,11 +62,23 @@ Requires OpenClaw (`npm i -g openclaw`), Node ≥ 20, a Cerebras API key.
    (`GROQ_API_KEY`) alongside Cerebras, so the two translations compete
    bubble-for-bubble with their own tok/s.
 
+## Replay fallback and record mode
+
+Live requests get a 12 s first-token budget. If a demo clip misses it, the UI
+plays that clip's recorded real response from `public/replays/`, labelled
+REPLAY; mic and file captures show an error with a retry button instead. To
+re-record the fixtures, run `BABBLE_RECORD=1 node server.mjs` and play each
+demo clip (the budget rises to 180 s in this mode).
+
 ## Notes on speed
 
 The tok/s meter measures browser-observed decode rate. Under hackathon load
 the trial endpoint queues; the UI shows the wait honestly, then streams at
 full speed once dequeued.
+
+Measured on 22 Nov through the gateway: 24-58 s before the first token,
+then about 0.6 s to decode the whole reply. The redesign plan and current
+status live in `docs/redesign/README.md`.
 
 ## Honesty notes
 

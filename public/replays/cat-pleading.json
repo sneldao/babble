@@ -1,0 +1,34 @@
+{
+  "clip": "cat-pleading.wav",
+  "species": "cat",
+  "header": {
+    "vocal": "protest",
+    "mood": "irritated",
+    "confidence": 0.88
+  },
+  "deltas": [
+    {
+      "tMs": 0.10000000149011612,
+      "text": "Enough. I have made myself clear four"
+    },
+    {
+      "tMs": 107,
+      "text": " times"
+    },
+    {
+      "tMs": 140.29999999701977,
+      "text": ". Stop"
+    },
+    {
+      "tMs": 142.69999999552965,
+      "text": " testing"
+    },
+    {
+      "tMs": 146.69999999552965,
+      "text": " my patience and attend to me."
+    }
+  ],
+  "queueMs": 49286.20000000298,
+  "decodeMs": 1316.7999999970198,
+  "recordedAt": "2026-11-22T07:36:57.479Z"
+}

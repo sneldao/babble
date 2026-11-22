@@ -1,0 +1,42 @@
+{
+  "clip": "dog-bark2.wav",
+  "species": "dog",
+  "header": {
+    "vocal": "play",
+    "mood": "eager",
+    "confidence": 0.7
+  },
+  "deltas": [
+    {
+      "tMs": 0,
+      "text": "That’s"
+    },
+    {
+      "tMs": 331.3999999985099,
+      "text": " my"
+    },
+    {
+      "tMs": 390,
+      "text": " play bark again!"
+    },
+    {
+      "tMs": 398.3999999985099,
+      "text": " Come on, come on"
+    },
+    {
+      "tMs": 423.5,
+      "text": "—"
+    },
+    {
+      "tMs": 428.79999999701977,
+      "text": "grab a toy"
+    },
+    {
+      "tMs": 438,
+      "text": " and chase me!"
+    }
+  ],
+  "queueMs": 40096,
+  "decodeMs": 6495.9000000059605,
+  "recordedAt": "2026-11-22T07:46:51.385Z"
+}
