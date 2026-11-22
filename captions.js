@@ -553,6 +553,7 @@ export function mount(el, st) {
     if (d.lane === "cerebras") lanes.cerebras._hadError = true;
   }));
   unsubs.push(st.on("capture:start", () => { lanes.cerebras._hadError = false; }));
+  unsubs.push(st.on("interpret:start", (d) => { if (d.lane === "cerebras") lanes.cerebras._hadError = false; }));
 
   if (st.state === "boot" || st.state === "idle") setPrompt();
   return () => unsubs.forEach((u) => u());
