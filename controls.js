@@ -73,7 +73,7 @@ export function mount(el, st) {
 
   const gSource = document.createElement("div");
   gSource.className = "ctl-group";
-  const sampleBtn = B("ctl-btn", "Try a sample", { "aria-haspopup": "menu", "aria-expanded": "false" });
+  const sampleBtn = B("ctl-btn", "Sample", { "aria-haspopup": "menu", "aria-expanded": "false", title: "Try a sample" });
   const uploadBtn = B("ctl-btn", "Upload", { title: "Upload a clip" });
   const fileIn = document.createElement("input");
   fileIn.type = "file";
@@ -111,6 +111,7 @@ export function mount(el, st) {
   petLbl.textContent = "Pet name";
   const petIn = document.createElement("input");
   petIn.className = "ctl-input ctl-pet-in";
+  petIn.setAttribute("aria-label", "Pet name");
   petIn.size = 9;
   petIn.maxLength = 32;
   petIn.autocomplete = "off";
@@ -305,9 +306,13 @@ export function mount(el, st) {
       sendBtn.title = t;
     }
   }
+  const petNarrow = matchMedia("(min-width: 1200px) and (max-width: 1599.98px)");
+  petNarrow.addEventListener?.("change", reflectSpecies);
   function reflectSpecies() {
     for (const c of spWrap.children) c.setAttribute("aria-pressed", String(c.dataset.sp === st.species));
-    petIn.placeholder = st.species[0].toUpperCase() + st.species.slice(1);
+    // The visible "PET NAME" label hides below 1600px; keep the field
+    // identifiable via its placeholder there.
+    petIn.placeholder = petNarrow.matches ? "Pet name" : st.species[0].toUpperCase() + st.species.slice(1);
     petIn.value = localStorage.getItem(`babble.pet.${st.species}`) || "";
   }
   function sendPet() {
