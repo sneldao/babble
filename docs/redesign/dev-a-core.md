@@ -73,12 +73,14 @@ Then:
 6. `public/api.js`: `interpret(payload, { lane, signal })` and
    `vocalize(payload, { signal })`. Each uses an `AbortController` with a 12s
    first-token (or response) budget, parses the SSE, strips the
-   `VOCAL/MOOD/CONFIDENCE/---` header, and calls back with header, body
-   deltas, done and error. Compute `tps` from deltas as they arrive (use the
-   server's token estimate: one token per four characters), `queueMs` as
-   request to first delta, `decodeMs` as first delta to done.
-7. Remove the `history` array from the payload only if you confirm the
-   OpenClaw session keeps context; otherwise leave it.
+   `VOCAL/MOOD/CONFIDENCE/EVIDENCE/---` header, and calls back with header,
+   body deltas, done and error. While streaming, `tps` is a running chars/4
+   estimate flagged `tpsEstimated`; the final figure uses the provider's
+   usage report from the server's done event. `queueMs` is request to first
+   delta, `decodeMs` first delta to done.
+7. Done: the `history` array is gone. OpenClaw keeps context only with an
+   agent-scoped `x-openclaw-session-key: agent:babble:<id>`, which the server
+   now sends; a bare key fails with `AgentSelectionRequiredError`.
 
 ## Replay fallback
 
@@ -105,7 +107,7 @@ Handle intents and emit the events in the README. Specifically:
   clip names one.
 - `intent:file`: decode and analyse, no playback.
 - If `features.f0Median === 0`, go to `error` with reason "nothing voiced".
-- `intent:race`: when on, start a second `interpret` with `lane: "groq"`
+- `intent:race`: when on, start a second `interpret` with `lane: "rival"`
   against `/api/compare` alongside the Cerebras one.
 - `intent:reply`: emit `reply:sent`, call `vocalize`, then `playScript` from
   C and emit `vocalize:play`, or `vocalize:error`.

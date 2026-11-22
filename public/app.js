@@ -63,7 +63,9 @@ stage.on("reply:sent", (d) => {
 let race = false;
 let camOn = false;
 let camStream = null;
-let history = [];
+let sessionId = crypto.randomUUID();
+let pet = localStorage.getItem(`babble.pet.${stage.species}`) || stage.species;
+let turns = 0;
 let last = null;               // { source, clip, buffer, features }
 let current = [];              // in-flight interpret promises
 let replayTimers = [];
@@ -79,6 +81,17 @@ function cancelInFlight() {
   for (const t of replayTimers) clearTimeout(t);
   replayTimers = [];
 }
+
+function endSession() {
+  if (turns > 0) {
+    try {
+      navigator.sendBeacon("/api/session/end", JSON.stringify({ sessionId, pet, species: stage.species }));
+    } catch {}
+  }
+  sessionId = crypto.randomUUID();
+  turns = 0;
+}
+addEventListener("pagehide", endSession);
 
 const guard = (fn) => async (detail) => {
   try {
@@ -153,8 +166,8 @@ async function playReplay(rec, waitedMs) {
     tokens: Math.round(text.length / 4),
     tps: Math.round(text.length / 4) / Math.max(0.05, (performance.now() - t0) / 1000),
     replay: true,
+    tokensEstimated: true, reasoningTokens: null,
   });
-  if (text.trim()) history.push(`${stage.species}: "${text.trim()}"`);
   stage.set("done");
   return true;
 }
@@ -162,7 +175,7 @@ async function playReplay(rec, waitedMs) {
 async function run(cap) {
   cancelInFlight();
   const seq = runSeq;
-  const payload = { species: stage.species, features: cap.features, image: grabFrame(), history };
+  const payload = { species: stage.species, features: cap.features, image: grabFrame(), sessionId, pet };
   stage.set("queued");
   const t0 = performance.now();
   stage.emit("interpret:start", { lane: "cerebras", t0 });
@@ -185,18 +198,19 @@ async function run(cap) {
   const c = wire("cerebras");
   current.push(c);
   if (race) {
-    const g = wire("groq");
+    const g = wire("rival");
     current.push(g);
-    stage.emit("interpret:start", { lane: "groq", t0 });
+    stage.emit("interpret:start", { lane: "rival", t0 });
     g.then((r) => {
       if (seq !== runSeq) return;
       if (r.ok) {
         stage.emit("interpret:done", {
-          lane: "groq", text: r.text, queueMs: r.queueMs, decodeMs: r.decodeMs,
+          lane: "rival", text: r.text, queueMs: r.queueMs, decodeMs: r.decodeMs,
           tokens: r.tokens, tps: r.tps, replay: false,
+          tokensEstimated: r.tokensEstimated, reasoningTokens: r.reasoningTokens,
         });
       } else {
-        stage.emit("interpret:error", { lane: "groq", reason: r.reason, status: r.status });
+        stage.emit("interpret:error", { lane: "rival", reason: r.reason, status: r.status });
       }
     });
   }
@@ -204,11 +218,12 @@ async function run(cap) {
   const r = await c;
   if (seq !== runSeq) return;
   if (r.ok) {
+    turns++;
     stage.emit("interpret:done", {
       lane: "cerebras", text: r.text, queueMs: r.queueMs, decodeMs: r.decodeMs,
       tokens: r.tokens, tps: r.tps, replay: false,
+      tokensEstimated: r.tokensEstimated, reasoningTokens: r.reasoningTokens,
     });
-    if (r.text.trim()) history.push(`${stage.species}: "${r.text.trim()}"`);
     stage.set("done");
     if (cfg.record && cap.source === "clip") {
       fetch("/api/dev/replay", {
@@ -274,8 +289,7 @@ stage.on("intent:reply", guard(async (d) => {
   const text = String(d.text || "").trim();
   if (!text) return;
   stage.emit("reply:sent", { text });
-  history.push(`you: "${text}"`);
-  const r = await vocalize({ text, species: stage.species });
+  const r = await vocalize({ text, species: stage.species, sessionId, pet });
   if (!r.ok) {
     stage.emit("vocalize:error", { reason: r.reason });
     return;
@@ -300,6 +314,16 @@ stage.on("intent:reply", guard(async (d) => {
 
 // ---------- race / webcam ----------
 stage.on("intent:race", (d) => { race = !!d.on; });
+stage.on("species", (d) => {
+  endSession();
+  pet = localStorage.getItem(`babble.pet.${d.species}`) || d.species;
+});
+stage.on("intent:pet", (d) => {
+  endSession();
+  const name = String(d.name || "").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 32) || stage.species;
+  localStorage.setItem(`babble.pet.${stage.species}`, name);
+  pet = name;
+});
 stage.on("intent:cam", guard(async (d) => {
   if (camOn && !d.on) {
     camStream?.getTracks().forEach((t) => t.stop());

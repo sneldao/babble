@@ -69,10 +69,13 @@ A lane label ("Kimi K3.1 Pro on Cerebras") sits under the header.
 | `vocalize:error` | "Couldn't vocalize that" with a retry. |
 
 **Race.** With race on, `#captions` splits into two equal lanes, Cerebras
-left and Groq right in `--rival`, each running the same component from its
-own lane's events. When the first lane finishes, flag it "finished first"
-with its time; when both are done, show the margin. If the Groq lane errors
-with status 501, show "Groq offline (no key)" in the lane, not an empty box.
+left and the GPU rival right in `--rival`, labelled from `/api/config`
+`rival.label` (default "Nebius · GPU"). Both lanes run the same model, so
+title the pair "Kimi K3.1 Pro: Cerebras vs GPU". When the first lane finishes,
+flag it "finished first" with its decode time; when both are done, show the
+decode margin. Compare decode times, never wait times: the wait includes a
+shared queue. If the rival lane errors with status 501, show "GPU lane
+offline" in the lane, not an empty box.
 Under 900px the lanes stack.
 
 **Accessibility.** The animated element is `aria-hidden`; a visually hidden
@@ -106,7 +109,7 @@ Three groups, left to right, labelled in plain words:
   named buttons (not a native select). "Upload a clip" for a file. "Camera"
   as a toggle with an on state.
 - **Options.** Species switcher (three segments, each in its own colour,
-  calls `stage.setSpecies`), the Race switch (sprung, labelled "Race Groq"),
+  calls `stage.setSpecies`), the Race switch (sprung, labelled "Race a GPU"),
   and mute.
 
 The reply field sits on its own row: an input "Say something back..." with a
@@ -132,8 +135,8 @@ A owns the page grid; you own how your three modules behave inside it.
   the stream, and rolls rows correctly on long output.
 - Bar heights visibly differ between a loud and a quiet clip.
 - A 10s queue shows rotating lines and a running count.
-- Race shows two lanes, a winner flag and the margin; Groq without a key
-  shows the offline message.
+- Race shows two lanes, a winner flag and the decode margin; with the rival
+  agent not configured it shows the offline message.
 - The start button unlocks audio; nothing plays before it.
 - Keyboard only: every control is reachable and operable, focus is always
   visible, and the reply input does not trigger the `Space` shortcut.

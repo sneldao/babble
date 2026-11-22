@@ -15,7 +15,7 @@ export function interpret(payload, { lane = "cerebras", budgetMs = 12000, stallM
 
     let res;
     try {
-      res = await fetch(lane === "groq" ? "/api/compare" : "/api/interpret", {
+      res = await fetch(lane === "rival" ? "/api/compare" : "/api/interpret", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -50,7 +50,7 @@ export function interpret(payload, { lane = "cerebras", budgetMs = 12000, stallM
       const elapsed = Math.max(50, performance.now() - firstContentAt);
       const tps = Math.round(contentChars / 4) / (elapsed / 1000);
       deltas.push({ tMs: performance.now() - firstBodyAt, text: chunk });
-      on.delta?.({ text: chunk, t: performance.now(), first: deltas.length === 1, tps });
+      on.delta?.({ text: chunk, t: performance.now(), first: deltas.length === 1, tps, tpsEstimated: true });
     };
 
     try {
@@ -84,11 +84,12 @@ export function interpret(payload, { lane = "cerebras", budgetMs = 12000, stallM
                   vocal: hdr.match(/VOCAL:\s*(\S+)/)?.[1] ?? null,
                   mood: hdr.match(/MOOD:\s*(.+)/)?.[1]?.trim() ?? null,
                   confidence: (() => { const c = parseFloat(hdr.match(/CONFIDENCE:\s*(\S+)/)?.[1]); return Number.isNaN(c) ? null : Math.min(1, Math.max(0, c)); })(),
+                  evidence: hdr.match(/EVIDENCE:\s*(.+)/)?.[1]?.trim() ?? null,
                 });
                 fireBody(text.slice(split + 5).replace(/^\n/, ""));
                 text = "";
               } else if (text.length > HEADER_LIMIT) {
-                fireHeader({ vocal: null, mood: null, confidence: null });
+                fireHeader({ vocal: null, mood: null, confidence: null, evidence: null });
                 fireBody(text);
                 text = "";
               }
@@ -105,11 +106,11 @@ export function interpret(payload, { lane = "cerebras", budgetMs = 12000, stallM
     clearInterval(watchdog);
     if (errorPayload) return { ok: false, reason: "http", status: errorPayload.status ?? null };
     if (!donePayload) return { ok: false, reason: "network", status: null };
-    if (!headerFired) fireHeader({ vocal: null, mood: null, confidence: null });
+    if (!headerFired) fireHeader({ vocal: null, mood: null, confidence: null, evidence: null });
     const now = performance.now();
     const queueMs = firstContentAt === null ? now - t0 : firstContentAt - t0;
     const decodeMs = firstContentAt === null ? 0 : now - firstContentAt;
-    const tokens = Math.round(contentChars / 4);
+    const tokens = typeof donePayload.tokens === "number" ? donePayload.tokens : Math.round(contentChars / 4);
     return {
       ok: true,
       text: body,
@@ -118,6 +119,8 @@ export function interpret(payload, { lane = "cerebras", budgetMs = 12000, stallM
       queueMs,
       decodeMs,
       tokens,
+      reasoningTokens: donePayload.reasoningTokens ?? null,
+      tokensEstimated: donePayload.tokensEstimated ?? true,
       tps: tokens / Math.max(0.05, decodeMs / 1000),
     };
   })();

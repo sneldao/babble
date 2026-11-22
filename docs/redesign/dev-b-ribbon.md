@@ -77,7 +77,7 @@ in the old `drawSpectrogram`. Then overlay:
 - If a mark falls beyond the end of the capture, extend the axis to the
   right with a hatched "after the sound" zone, so the picture stays truthful
   when we are slow.
-- With race on, the Groq lane gets its own marks in `--rival`.
+- With race on, the rival lane gets its own marks in `--rival`.
 - On a replay, draw the marks hollow and label them "replay".
 
 **Other states.** `idle`: an empty ruled strip with the axes and one line of
@@ -97,12 +97,19 @@ canvas, then resample to a grid of dots.
 
 Shows, in this order:
 
-- Tokens per second, live from `interpret:delta.tps`, large.
-- `queue 0.42 s · decode 0.31 s` from `interpret:done`. Keep these separate;
-  never fold queue time into the speed figure.
-- While `queued`: the elapsed count, and "queue" lit.
+- Decode time, large: `0.31 s` from `interpret:done.decodeMs`, the time
+  from first word to last. This is the headline figure; it is measured
+  exactly, unlike tokens.
+- Tokens per second, smaller, live from `interpret:delta.tps` and replaced on
+  `interpret:done`. Suffix `est.` whenever `tpsEstimated` / `tokensEstimated`
+  is true. Never show a rate without that suffix when it is estimated.
+- `wait 4.2 s · decode 0.31 s` from `interpret:done`. Label the first figure
+  "wait", not "queue": it holds the shared trial endpoint's queue and
+  retries plus the model's hidden thinking (`reasoningTokens`, shown as
+  `+ 167 thinking tokens` when not null). Never fold it into the speed figure.
+- While `queued`: the elapsed count, and "wait" lit.
 - On replay: the word REPLAY and no tok/s figure.
-- With race on: a second row for Groq.
+- With race on: a second row for the rival lane, labelled from `/api/config` `rival.label`.
 
 On first mount, run a short boot (dots fill in over about 0.8s). Under
 reduced motion, show it settled.

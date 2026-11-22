@@ -4,7 +4,7 @@
 
 Project Name: Babble
 Team Members: @<your-handle>
-Project Description: Babble is a real-time interspecies interpreter: point a mic at your cat or dog, browser DSP measures the actual vocalization (pitch contour, call segmentation, spectral centroid), and an OpenClaw agent on Kimi K3.1 Pro @ Cerebras streams back what it meant — fast enough that the translation lands before the meow finishes. Talk back and it re-synthesizes your words as species-shaped vocalizations.
+Project Description: Babble is an interspecies interpreter: point a mic at your cat or dog, browser DSP measures the actual vocalization (pitch contour, call segmentation, spectral centroid), and an OpenClaw agent on Kimi K3.1 Pro @ Cerebras says what it meant, citing the measurements behind each read. Once it starts answering, the whole translation lands in a fraction of a second. Talk back and it re-synthesizes your words as meows; it remembers each pet between sessions. Race it against the same model on GPUs.
 GitHub Repository: https://github.com/sneldao/babble
 Demo Video: (attach 60s)
 
@@ -16,11 +16,13 @@ Title: Babble — a real-time interpreter for your cat, running Kimi K3.1 Pro on
 
 Body: Point your mic at your cat (or dog, or baby). The browser does real
 DSP on the vocalization — f0 contour, call segmentation, envelope, spectral
-centroid — and streams it to an OpenClaw agent backed by Kimi K3.1 Pro on
-Cerebras, which renders the interpretation in-character in real time. Reply
-in the chat box and it vocalizes your message back as synthetic meows/barks
-via WebAudio. The speed is the product: interpretation only feels like magic
-when it's simultaneous.
+centroid — and sends it to an OpenClaw agent backed by Kimi K3.1 Pro on
+Cerebras. The agent classifies the call, shows the evidence it used ("rising
+contour; 2 calls; median f0 600 Hz") and speaks for the animal. Reply in the
+chat box and it vocalizes your message back as synthetic meows/barks via
+WebAudio; the animal hears you in the same OpenClaw session, and the agent
+keeps notes on each pet for next time. Flip on race to watch the same model
+decode on Cerebras and on GPUs side by side.
 
 Repo: https://github.com/sneldao/babble
 

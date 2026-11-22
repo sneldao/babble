@@ -68,7 +68,7 @@ them; do not edit it.
 
 `public/style.css` is deleted by A in the scaffold commit.
 
-## Current status (updated 22 Nov, 07:50 UTC)
+## Current status (updated 22 Nov, 08:02 UTC)
 
 - **Trunk is `redesign-integration`**, not `redesign`. It is the only branch
   with real captions, start screen and controls. All branches are pushed to
@@ -92,6 +92,83 @@ them; do not edit it.
   behind the caption and the first caption line scrolls out of view.
 - **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
   `agent-workspace/memory/`) are gitignored.
+
+- **Review follow-ups merged** (section below): workspace-only prompt, real
+  OpenClaw sessions, per-pet memory, `EVIDENCE` line, rival lane on Nebius
+  GPUs, real token counts. The UI still has to show `evidence`, the pet name
+  field and the wait/decode labels (B and D tasks below).
+- **Live OpenClaw config for agent `babble`:** workspace
+  `babble-dev-a/agent-workspace` (the trunk), `thinkingDefault: "low"`,
+  `skills: []`, tools `read`/`write`/`edit` confined to the workspace. The
+  Cerebras model entry declares `reasoning: true` with an effort map so `low`
+  is actually sent. Backup: `~/.openclaw/openclaw.json.bak-babble`. Agent
+  `babble-gpu` is not configured yet: it needs `NEBIUS_API_KEY` in the
+  gateway's environment, a gateway restart, then `scripts/setup-openclaw.sh`.
+- **Recorded replays predate the `EVIDENCE` line**, so their `evidence` is
+  `null`. Re-record them to show evidence on REPLAY.
+
+## Review follow-ups (M2.5)
+
+A pre-submission review raised four objections. What we found and decided:
+
+- **"Lands before the meow finishes" was false.** LISTEN records a fixed
+  3 s window before anything is sent, and the first word then waits on a
+  shared trial queue (measured 10-170 s, including OpenClaw retrying
+  Cerebras 429s) plus the model's hidden thinking. The claim is now: once the
+  model starts answering, the whole translation streams in within a fraction
+  of a second. Decode time is the headline number; wait is shown apart.
+- **The race compared different models on a non-GPU provider with guessed
+  tokens.** The rival is now the same model (Kimi K3.1 Pro) at Nebius
+  (GPU), routed through a second OpenClaw agent with the same workspace.
+  Tokens come from the provider's usage report; estimates are labelled.
+- **OpenClaw was a pass-through.** The workspace is now the only prompt,
+  sessions are real (the agent hears replies), and the agent keeps per-pet
+  memory with its own tools at session end. Measured on the live gateway:
+  prompt 20,384 → 4,700-5,000 tokens after replacing the stock `AGENTS.md`
+  and limiting tools and skills. K3.1 Pro cannot turn reasoning off; we
+  request `low`. Hidden thinking went from 340 to 167-215 tokens per
+  capture, but we have not isolated how much of that is the effort setting.
+- **"It's just making it up."** Every interpretation now carries an
+  `EVIDENCE` line citing the measurements that decided the class.
+
+A (merged into the trunk from `redesign-objections`): server, `api.js`,
+`app.js`, harness, agent workspace, setup script, README. The lane rename is
+also done in `ribbon.js`, `telemetry.js` and `controls.js`; `captions.js`,
+`captions.css` and `scripts/devd-smoke.mjs` still say `"groq"` because D had
+uncommitted work in them at merge time, so the race lane shows nothing in
+captions until D renames it. Contract changes are in the event
+table below: `evidence`, `tokensEstimated`, `reasoningTokens`, `tpsEstimated`,
+`intent:pet`, and lane `"groq"` renamed `"rival"`.
+
+UI work, by owner:
+
+- **B, ribbon:** draw the `evidence` string as an annotation on the ribbon,
+  next to the call brackets it refers to, so the measurement and the word
+  sit together. Rename lane `"groq"` to `"rival"` in `ribbon.js`.
+- **B, telemetry:** decode time is the large figure; tok/s smaller with
+  `est.` when estimated; "wait", not "queue"; show `+ N thinking tokens`.
+  Rename lane `"groq"` to `"rival"` in `telemetry.js` (brief updated).
+- **D, captions:** under the header row, the `evidence` line in mono at
+  `--step--1`, `--ink-2`. Race lanes per the updated brief. Rename lane in
+  `captions.js` and `captions.css`.
+- **D, controls:** a small "Name" field beside the species switcher that
+  emits `intent:pet { name }` on Enter or blur; prefill from
+  `localStorage["babble.pet." + species]`. Race switch label "Race a GPU";
+  rename lane in `controls.js`.
+- **D, start screen:** the one-sentence pitch must not promise speed relative
+  to the sound. Use: "Point a mic at your pet. Babble measures the sound and
+  tells you what it meant."
+
+Demo video (60 s), so a viewer sees the sound drive the words:
+
+1. Two different meows from the same cat, back to back: different contours,
+   different classes, and the evidence line says why.
+2. A counterfactual: the same clip with its pitch flattened or shifted, and
+   the class and mood change with it.
+3. A reply ("dinner is at six"), then the next meow complains about six.
+4. Race on: decode times side by side. If the trial queue is long while
+   filming, show the wait honestly or use a labelled REPLAY. Never cut a
+   spinner silently.
 
 ## Branches and order
 
@@ -173,9 +250,9 @@ says otherwise.
 | `capture:start` | A | `{ source: "mic"\|"clip"\|"file", analyser, startedAt, durationMs }` (`analyser` is a live `AnalyserNode`, or `null` for `file`) |
 | `analysis` | A | `{ features, buffer }` (see Features below) |
 | `interpret:start` | A | `{ lane, t0 }` |
-| `interpret:header` | A | `{ lane, vocal, mood, confidence }` (`confidence` 0..1 or `null`) |
-| `interpret:delta` | A | `{ lane, text, t, first, tps }` (`text` is utterance body only, header already stripped; `tps` is the running decode rate) |
-| `interpret:done` | A | `{ lane, text, queueMs, decodeMs, tokens, tps, replay }` |
+| `interpret:header` | A | `{ lane, vocal, mood, confidence, evidence }` (`confidence` 0..1 or `null`; `evidence` is the agent's one-line citation of the measurements that decided the class, or `null`) |
+| `interpret:delta` | A | `{ lane, text, t, first, tps, tpsEstimated }` (`text` is utterance body only, header already stripped; `tps` is the running decode rate, always a chars/4 estimate while streaming) |
+| `interpret:done` | A | `{ lane, text, queueMs, decodeMs, tokens, tps, tokensEstimated, reasoningTokens, replay }` (`tokens` are visible output tokens from the provider's usage report; `tokensEstimated` is true when no usage arrived and chars/4 was used; `reasoningTokens` are the model's hidden thinking tokens, or `null`) |
 | `interpret:error` | A | `{ lane, reason: "timeout"\|"http"\|"network", status }` |
 | `reply:sent` | A | `{ text }` |
 | `vocalize:play` | A | `{ script, schedule, startedAt, totalMs }` (`schedule[i] = { tMs, durMs, type, shape, pitch, gloss }`) |
@@ -185,11 +262,12 @@ says otherwise.
 | `intent:file` | D | `{ file }` (a `File`) |
 | `intent:reply` | D | `{ text }` |
 | `intent:race` | D | `{ on }` |
+| `intent:pet` | D | `{ name }` (names the animal; A ends the current session so the agent saves its memory, then starts a new one) |
 | `intent:cam` | D | `{ on }` |
 | `intent:retry` | D | `{}` |
 | `intent:start` | D | `{}` (start screen dismissed; audio is unlocked) |
 
-`lane` is `"cerebras"` or `"groq"`. The Groq lane only exists when race is on.
+`lane` is `"cerebras"` or `"rival"`. The rival lane only exists when race is on. It runs the same model (Kimi K3.1 Pro) on GPUs at Nebius, through a second OpenClaw agent with the same workspace, so both lanes get an identical prompt; its label comes from `/api/config` `rival.label`.
 
 State transitions (A drives them):
 `boot -> idle` on `intent:start`; `idle|done|error -> listening` on capture;
@@ -298,7 +376,7 @@ Run in ego browser at 1450x736 and 390x844:
    word marks. The character's mouth follows the clip.
 4. A typed reply shows pending, then plays a vocalization with the character
    animating, or shows a failure with retry.
-5. Race on: two lanes side by side with a winner flag (or "Groq offline").
+5. Race on: two lanes side by side with a winner flag (or "GPU lane offline").
 6. Forced timeout (stop the gateway): error state is designed, retry works.
 7. Keyboard only: every control reachable, focus visible.
 8. `prefers-reduced-motion`: text appears whole, no looping motion.
