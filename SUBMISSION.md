@@ -41,7 +41,7 @@ Demo Video: (attached)
 Saved as a draft on Reddit (r/Cerebras → Create → Drafts) with the flair set.
 Add the video with the editor's video button, or paste a YouTube link.
 
-Title: Babble: a translator for your cat or dog, running Kimi K3.1 Pro on Cerebras through OpenClaw
+Title: A cat on a shed roof, translated: "Stop filming and help me down." Babble, built with Kimi K3.1 Pro on Cerebras + OpenClaw
 
 Body:
 
