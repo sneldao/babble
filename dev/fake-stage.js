@@ -1,4 +1,4 @@
-import { decode, playBuffer } from "../audio.js";
+import { decode, getCtx, getOut } from "../audio.js";
 import { analyzeBuffer } from "../acoustics.js";
 import { playScript } from "../synth.js";
 
@@ -43,17 +43,29 @@ async function streamUtterance(stage, lane, text, t0, queueMs, replay, token, de
   });
 }
 
+let liveSrc = null;
+
 export async function runSession(stage, { clip = "cat-pleading.wav", variant = "ok" } = {}) {
   const token = { id: ++runId, timers: new Set() };
   const species = clip.startsWith("dog-") ? "dog" : "cat";
   stage.setSpecies(species);
 
+  liveSrc?.stop();
   const buf = await decode(await (await fetch("/clips/" + clip)).arrayBuffer());
-  const { analyser, startedAt, durationMs } = playBuffer(buf);
+  const c = getCtx();
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const analyser = c.createAnalyser();
+  analyser.fftSize = 2048;
+  src.connect(analyser).connect(getOut());
+  src.start();
+  liveSrc = src;
+  const startedAt = performance.now();
+  const durationMs = buf.duration * 1000;
   stage.emit("capture:start", { source: "clip", analyser, startedAt, durationMs });
   stage.set("listening");
 
-  if (!await wait(durationMs, token)) return;
+  if (!await wait(Math.min(durationMs, 400), token)) return;
   if (token.id !== runId) return;
   stage.set("analysing");
   const features = analyzeBuffer(buf);
