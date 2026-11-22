@@ -76,7 +76,7 @@
   min-height: 1.1em;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: max(1.5rem, min(var(--step-3), calc((100cqh - 3.75rem) / 2.3), 12cqw));
+  font-size: max(1.25rem, calc(max(1.5rem, min(var(--step-3), calc((100cqh - 3.75rem) / 2.3), 12cqw)) * var(--fit, 1)));
   line-height: 1.05;
   text-wrap: balance;
   color: var(--ink);
@@ -229,8 +229,8 @@
 }
 
 @media (max-width: 899.98px) {
-  #captions { min-height: 22dvh; }
-  .cap-utt { font-size: var(--step-2); }
+  #captions { min-height: 30dvh; }
+  .cap-utt { font-size: max(1.25rem, calc(var(--step-2) * var(--fit, 1))); }
   #captions[data-race="on"] .cap-lanes { grid-template-columns: 1fr; }
   #captions[data-race="on"] .cap-lane[data-lane="groq"] {
     border-left: 0;

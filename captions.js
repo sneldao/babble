@@ -118,7 +118,7 @@ export function mount(el, st) {
     const L = {
       name, el: lane, head, tag, flag, notice, utt, uttIn, status,
       text: "", chars: [], pending: [], raf: 0, doneMs: null, startT0: 0,
-      queueTimer: 0, queueIdx: 0,
+      queueTimer: 0, queueIdx: 0, fit: 1, fitRaf: 0,
     };
     return L;
   }
@@ -126,7 +126,7 @@ export function mount(el, st) {
   const lanes = { cerebras: makeLane("cerebras"), groq: makeLane("groq") };
   lanes.groq.el.hidden = true;
   new ResizeObserver(() => requestAnimationFrame(() => {
-    fitLane(lanes.cerebras); fitLane(lanes.groq);
+    fitToBox(lanes.cerebras); fitToBox(lanes.groq);
   })).observe(lanesEl);
 
   function stopQueue(L) {
@@ -138,6 +138,11 @@ export function mount(el, st) {
     stopQueue(L);
     if (L.raf) cancelAnimationFrame(L.raf);
     L.raf = 0;
+    if (L.fitRaf) cancelAnimationFrame(L.fitRaf);
+    L.fitRaf = 0;
+    L.fit = 1;
+    L.utt.style.removeProperty("--fit");
+    L.utt.classList.remove("roll");
     L.text = "";
     L.chars = [];
     L.pending = [];
@@ -244,11 +249,33 @@ export function mount(el, st) {
       }
       L.uttIn.appendChild(word);
     }
-    fitLane(L);
+    scheduleFit(L);
     if (!RM) scheduleReveal(L);
   }
 
-  function fitLane(L) {
+  // Fit-to-box: the container query size is the MAXIMUM. When the whole
+  // utterance does not fit the lane under the header/label, step the font
+  // down (monotonic per utterance — no jitter) until it does, with a floor
+  // of 1.25rem; only below the floor may the block roll up. Measurement is
+  // coalesced to one pass per animation frame.
+  function scheduleFit(L) {
+    if (L.fitRaf) return;
+    L.fitRaf = requestAnimationFrame(() => { L.fitRaf = 0; fitToBox(L); });
+  }
+
+  function fitToBox(L) {
+    if (!L.uttIn.firstChild) return;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const floor = 1.25 * rem;
+    let guard = 30;
+    while (guard-- > 0 && L.uttIn.scrollHeight > L.utt.clientHeight + 1) {
+      const fs = parseFloat(getComputedStyle(L.utt).fontSize) || floor;
+      if (fs <= floor + 0.5) break;
+      // --fit multiplies the BASE size; clamp at the floor ratio of that base.
+      const floorFit = (floor * L.fit) / fs;
+      L.fit = Math.max(L.fit * 0.92, floorFit);
+      L.utt.style.setProperty("--fit", L.fit.toFixed(3));
+    }
     L.utt.classList.toggle("roll", L.uttIn.scrollHeight > L.utt.clientHeight + 2);
   }
 
@@ -328,7 +355,7 @@ export function mount(el, st) {
     finishPending(L);
     L.doneMs = performance.now();
     if (d.replay) L.tag.hidden = false;
-    fitLane(L);
+    scheduleFit(L);
     if (d.lane === "cerebras") {
       liveEl.textContent = d.text || "";
       replyEl.textContent = ""; // new result supersedes an old reply line
