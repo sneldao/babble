@@ -84,3 +84,28 @@ export function playBuffer(buf) {
   src.start();
   return { analyser, startedAt: performance.now(), durationMs: buf.duration * 1000 };
 }
+
+// Long uploads: keep only the loudest `secs` so the model hears the part
+// where the animal is actually speaking. Mono mix, 1 s hop windows.
+export function loudestWindow(buf, secs = 12) {
+  const total = buf.duration;
+  if (total <= secs) return { buffer: buf, fromSec: 0, toSec: total, totalSec: total };
+  const sr = buf.sampleRate;
+  const nCh = buf.numberOfChannels;
+  const mono = new Float32Array(buf.length);
+  for (let ch = 0; ch < nCh; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < buf.length; i++) mono[i] += d[i] / nCh;
+  }
+  const winS = Math.floor(secs * sr), hopS = Math.floor(1 * sr);
+  let best = 0, bestFrom = 0;
+  for (let from = 0; from + winS <= buf.length; from += hopS) {
+    let e = 0;
+    for (let i = from; i < from + winS; i += 64) e += mono[i] * mono[i]; // stride sampling: plenty for ranking
+    if (e > best) { best = e; bestFrom = from; }
+  }
+  const out = getCtx().createBuffer(nCh, winS, sr);
+  for (let ch = 0; ch < nCh; ch++)
+    out.getChannelData(ch).set(buf.getChannelData(ch).subarray(bestFrom, bestFrom + winS));
+  return { buffer: out, fromSec: bestFrom / sr, toSec: (bestFrom + winS) / sr, totalSec: total };
+}

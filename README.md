@@ -81,7 +81,11 @@ Requires OpenClaw (`npm i -g openclaw`), Node ≥ 20, a Cerebras API key.
 ## Demo flow
 
 1. Pick a species (cat / dog / infant) — or a demo clip — and name your pet.
-2. LISTEN captures 3 s, the spectrogram + f0 contour draw in real time.
+2. LISTEN captures 3 s, the spectrogram + f0 contour draw in real time. Or
+   bring your own: upload or drop in a video of your pet (or a sound file).
+   Babble plays it, analyses the loudest 12 s, and sends the frame from the
+   loudest moment with the measurements. A photo alone is kept as a portrait
+   and sent with each later sound.
 3. The interpretation streams in — vocal class, mood, confidence, the
    evidence behind it, and the utterance.
 4. Reply in the box — Babble vocalizes it back. Keep the mic on: the animal

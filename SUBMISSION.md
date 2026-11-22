@@ -4,7 +4,7 @@
 
 Project Name: Babble
 Team Members: @<your-handle>
-Project Description: Babble is an interspecies interpreter: point a mic at your cat or dog, browser DSP measures the actual vocalization (pitch contour, call segmentation, spectral centroid), and an OpenClaw agent on Kimi K3.1 Pro @ Cerebras says what it meant, citing the measurements behind each read. Once it starts answering, the whole translation lands in a fraction of a second. Talk back and it re-synthesizes your words as meows; it remembers each pet between sessions. Race it against the same model on GPUs.
+Project Description: Babble is an interspecies interpreter: point a mic at your cat or dog (or drop in a video of them), browser DSP measures the actual vocalization (pitch contour, call segmentation, spectral centroid), and an OpenClaw agent on Kimi K3.1 Pro @ Cerebras says what it meant, citing the measurements behind each read. Once it starts answering, the whole translation lands in a fraction of a second. Talk back and it re-synthesizes your words as meows; it remembers each pet between sessions. Race it against the same model on GPUs.
 GitHub Repository: https://github.com/sneldao/babble
 Hosted demo (recorded answers): https://sneldao.github.io/babble/
 Demo Video: (attach 60s)
@@ -15,7 +15,8 @@ Demo Video: (attach 60s)
 
 Title: Babble — a real-time interpreter for your cat, running Kimi K3.1 Pro on Cerebras
 
-Body: Point your mic at your cat (or dog, or baby). The browser does real
+Body: Point your mic at your cat (or dog, or baby). No pet nearby? Upload a
+video: it reads the sound and looks at the frame from the loudest moment. The browser does real
 DSP on the vocalization — f0 contour, call segmentation, envelope, spectral
 centroid — and sends it to an OpenClaw agent backed by Kimi K3.1 Pro on
 Cerebras. The agent classifies the call, shows the evidence it used ("rising

@@ -83,6 +83,24 @@ them; do not edit it.
   (plus `.nojekyll`); all app URLs are relative for the `/babble/` subpath.
   **After changing `public/`, redeploy with
   `git subtree push --prefix public origin gh-pages`.**
+- **Bring your own pet (22 Nov, 12:36 UTC).** Upload (or drop on the stage) a video,
+  a sound file or a photo. Audio and video share one path: the file is
+  decoded in the browser, clips over 12 s are cut to their loudest 12 s
+  (`loudestWindow` in `audio.js`), and the upload now plays aloud so the
+  ribbon paints live. For a video the frame at the loudest moment is grabbed
+  and sent as `image` with `imageKind: "moment"`; a photo is kept as a
+  portrait and sent with each later sound as `imageKind: "portrait"`; the
+  webcam stays `"cam"`. The server tells the agent which kind it is (text in
+  `buildInterpretMessages`, matching sentence in `agent-workspace/SOUL.md`).
+  The picture shows in a snapshot card beside the character
+  (`public/snapshot.js`), labelled `sent with the sound` or `shown only`, and
+  the ribbon marks the frame's time. `BABBLE_VISION=0` stops pictures being
+  sent. Verified live: the Cerebras model named the colour of a test image
+  called directly and through the OpenClaw gateway, and a real upload run
+  came back with "frame unusable" in its evidence for a test-pattern frame.
+  In the hosted demo an upload is measured and drawn, then says the live
+  translation needs the local build (neutral wording, not an error).
+  Not tested: a real phone camera roll, Safari, and a video of a real animal.
 - **Polish landed:** the GooeyStickyMenu stretch item is in — a goo-filter
   pill (SVG blur + alpha ramp, `public/goo.js`) slides under the active
   species button on the start screen and in the controls. The stage now
@@ -138,6 +156,7 @@ them; do not edit it.
 | 6 | Cerebras support message | you | Drafted for `#hackathon-support` (queue_exceeded pattern + org TPM question), still unposted. |
 | 7 | Post the drafts | you | X post, Reddit, Discord speed-bounty line — all in `SUBMISSION.md`. |
 | 8 | Housekeeping | anyone | `shopper-run.png` in the repo root is a committed stray screenshot; the Dev D drafts sit in Trash. |
+| 9 | Try your own pet video | you | The upload path is verified with a synthetic video only. Try one real clip (phone and desktop) before filming; it is the easiest way to get a good take. |
 
 ## Review follow-ups (M2.5)
 
@@ -275,7 +294,11 @@ says otherwise.
 | `vocalize:error` | A | `{ reason }` |
 | `intent:listen` | D | `{ secs }` |
 | `intent:clip` | D | `{ file, species }` |
-| `intent:file` | D | `{ file }` (a `File`) |
+| `intent:file` | D, drop zone | `{ file }` (a `File`: audio, video or image) |
+| `intent:media-clear` | snapshot card | `{}` (remove the uploaded picture) |
+| `media:set` | A | `{ kind: "video" \| "photo", url, name, fromSec? }` |
+| `media:frame` | A | `{ dataUrl, tMs, fromSec?, sent, demo }` (`tMs` is null for a portrait; `sent` means the picture goes to the model) |
+| `media:clear` | A | `{}` |
 | `intent:reply` | D | `{ text }` |
 | `intent:race` | D | `{ on }` |
 | `intent:pet` | D | `{ name }` (names the animal; A ends the current session so the agent saves its memory, then starts a new one) |

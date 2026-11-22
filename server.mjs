@@ -143,7 +143,11 @@ function sse(res) {
 }
 
 function buildInterpretMessages(body, petMemory) {
-  const { species = "cat", features, image } = body;
+  const { species = "cat", features, imageKind } = body;
+  const image =
+    typeof body.image === "string" && body.image.startsWith("data:image/") && body.image.length < 1_500_000
+      ? body.image
+      : null;
 
   const featSummary = features
     ? `duration_ms=${features.durationMs} f0_mean=${features.f0Mean}Hz f0_median=${features.f0Median}Hz ` +
@@ -161,9 +165,15 @@ function buildInterpretMessages(body, petMemory) {
     (features?.note ? `\ncontext=${features.note}` : "") +
     (petMemory ? `\npet_memory=${petMemory}` : "");
 
+  const imgNote =
+    imageKind === "moment"
+      ? "\nA frame from the same video is attached, taken at the loudest moment of this sound. Factor posture, ears and tail into your read."
+      : imageKind === "portrait"
+        ? "\nA photo of this animal is attached. It was not taken during this sound: use it for who the animal is (breed, age, build), not for its current posture."
+        : "\nA still frame is attached — factor posture, ears and tail into your read.";
   const content = image
     ? [
-        { type: "text", text: userText + "\nA still frame is attached — factor posture, ears and tail into your read." },
+        { type: "text", text: userText + imgNote },
         { type: "image_url", image_url: { url: image } },
       ]
     : userText;
@@ -441,7 +451,7 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify({
         model: MODEL, gateway: GATEWAY, agent: AGENT_ID, backend: BACKEND_MODEL,
         rival: { label: RIVAL_LABEL, agent: RIVAL_AGENT, backend: RIVAL_BACKEND, available: await rivalAvailable() },
-        record: process.env.BABBLE_RECORD === "1",
+        vision: process.env.BABBLE_VISION !== "0", record: process.env.BABBLE_RECORD === "1",
       }));
     }
     if (req.method !== "GET") return res.writeHead(405).end();

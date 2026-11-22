@@ -459,7 +459,7 @@ export function mount(el, stage) {
     }
 
     // HUD right readout, computed early so label placement can dodge it.
-    const rightWord = S.failed ? `decode failed · capture kept` : stateWord();
+    const rightWord = S.failed ? (S.failReason === "demo" ? "measured · hosted demo" : "decode failed · capture kept") : stateWord();
     const right = rightWord + (S.raceOn ? " · race" : "");
     ctx.font = `10px ${MONO}`;
     const rtw = ctx.measureText(right).width;
@@ -615,6 +615,24 @@ export function mount(el, stage) {
       ctx.fillText(label, lx, ly);
     });
 
+    // The frame sent with the sound: a quiet ink-2 tick on the time axis,
+    // nudged a row if it would sit on an arrival label.
+    if (S.frameMs != null && !S.talk) {
+      const fx = xLin(S.frameMs);
+      ctx.strokeStyle = C.ink2;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(fx, PAD.t + ph - 10); ctx.lineTo(fx, PAD.t + ph);
+      ctx.stroke();
+      ctx.fillStyle = C.ink2;
+      ctx.font = `10px ${MONO}`;
+      const ftw = ctx.measureText("frame").width;
+      let flx = Math.min(Math.max(PAD.l + 2, fx + 4), PAD.l + pw - ftw);
+      let fly = PAD.t + ph - 14;
+      if (markPlaced.some((p) => Math.abs(flx - p.x) < 40 || (flx < p.x1 + 4 && flx + ftw + 4 > p.x))) fly += 12;
+      ctx.fillText("frame", flx, fly);
+    }
+
     // Talk-back view: reply syllables own the plot on their own time axis.
     if (S.talk) {
       const total = S.talk.totalMs || 1;
@@ -697,7 +715,7 @@ export function mount(el, stage) {
       if (!title.endsWith("…")) title += "…";
     }
     ctx.fillText(title, 12, 12);
-    ctx.fillStyle = S.failed ? C.warn : C.ink2;
+    ctx.fillStyle = S.failed && S.failReason !== "demo" ? C.warn : C.ink2;
     ctx.fillText(right, rightX, 15);
 
     // Idle / empty states are never a blank box.
@@ -737,6 +755,7 @@ export function mount(el, stage) {
     S.raceOn = false;
     S.evidence = null;
     S.specImg = null;
+    S.frameMs = null;
     S.playP = -1;
     S.liveImg = document.createElement("canvas");
     S.liveImg.width = LIVE_COLS; S.liveImg.height = LIVE_ROWS;
@@ -847,6 +866,12 @@ export function mount(el, stage) {
     say("Interpretation failed. Capture kept.");
     draw();
   });
+
+  stage.on("media:frame", (d) => {
+    S.frameMs = typeof d.tMs === "number" ? d.tMs : null;
+    draw();
+  });
+  stage.on("media:clear", () => { S.frameMs = null; draw(); });
 
   stage.on("vocalize:play", (d) => {
     const entries = (d.schedule || []).map((s) => ({

@@ -75,10 +75,10 @@ export function mount(el, st) {
   const gSource = document.createElement("div");
   gSource.className = "ctl-group";
   const sampleBtn = B("ctl-btn", "Sample", { "aria-haspopup": "menu", "aria-expanded": "false", title: "Try a sample" });
-  const uploadBtn = B("ctl-btn", "Upload", { title: "Upload a clip" });
+  const uploadBtn = B("ctl-btn", "Upload", { title: "Upload a video, sound or photo" });
   const fileIn = document.createElement("input");
   fileIn.type = "file";
-  fileIn.accept = "audio/*";
+  fileIn.accept = "audio/*,video/*,image/*";
   fileIn.hidden = true;
   const camBtn = B("ctl-btn", "Cam", { "aria-pressed": "false", title: "Camera" });
   gSource.append(sampleBtn, uploadBtn, fileIn, camBtn);
@@ -141,9 +141,14 @@ export function mount(el, st) {
   const bar = document.createElement("div");
   bar.className = "ctl-bar";
   const mListen = B("ctl-listen ctl-listen-m", "Listen");
+  const mVideo = B("ctl-btn", "Video");
+  const mVideoIn = document.createElement("input");
+  mVideoIn.type = "file";
+  mVideoIn.accept = "video/*";
+  mVideoIn.hidden = true;
   const mSample = B("ctl-btn", "Sample");
   const mMore = B("ctl-btn", "More", { "aria-haspopup": "dialog", "aria-expanded": "false" });
-  bar.append(mListen, mSample, mMore);
+  bar.append(mListen, mVideo, mVideoIn, mSample, mMore);
 
   const sheet = document.createElement("div");
   sheet.className = "ctl-sheet";
@@ -228,6 +233,11 @@ export function mount(el, st) {
   });
 
   uploadBtn.addEventListener("click", () => fileIn.click());
+  mVideo.addEventListener("click", () => mVideoIn.click());
+  mVideoIn.addEventListener("change", () => {
+    if (mVideoIn.files[0]) st.emit("intent:file", { file: mVideoIn.files[0] });
+    mVideoIn.value = "";
+  });
   fileIn.addEventListener("change", () => {
     if (fileIn.files[0]) st.emit("intent:file", { file: fileIn.files[0] });
     fileIn.value = "";
