@@ -41,7 +41,7 @@ Demo Video: (attached)
 Saved as a draft on Reddit (r/Cerebras → Create → Drafts) with the flair set.
 Add the video with the editor's video button, or paste a YouTube link.
 
-Title: A cat on a shed roof, translated: "Stop filming and help me down." Babble, built with Kimi K3.1 Pro on Cerebras + OpenClaw
+Title: A cat yelling on a shed roof, translated: "Come here, now, and check on me." Babble, built with Kimi K3.1 Pro on Cerebras + OpenClaw
 
 Body:
 
@@ -54,7 +54,7 @@ How it works:
 - The agent classifies the call, shows the evidence it used (for example "2 prolonged calls; falling contour; crouched posture at the loudest moment") and speaks for the animal.
 - Type a reply and it voices your words back as synthetic meows or barks. The animal answers in the same OpenClaw session, and the agent keeps notes on each pet for next time.
 
-A video of Charlie the cat on a shed roof came back as: "I'm stuck up here and I don't like it. Stop filming and help me down."
+A video of Charlie the cat yelling on a shed roof came back as: "Something is wrong, and I've had enough. Come here, now, and check on me."
 
 On speed: Kimi K3.1 Pro on Cerebras is what makes this feel like a conversation. Once the model starts answering, the whole translation typically streams in under a second, so the words land while you are still looking at the animal. The app shows that decode time on screen, and there is a mode that runs the same model on a GPU provider side by side.
 
