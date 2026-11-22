@@ -44,7 +44,7 @@ function makeEl(tag = "div") {
     },
     prepend(...cs) { for (const c of [...cs].reverse()) this.children.unshift(c), c.parentElement = this; },
     remove() { if (this.parentElement) this.parentElement.children = this.parentElement.children.filter((x) => x !== this); },
-    addEventListener: absorb, removeEventListener: absorb,
+    addEventListener(t, f) { (this._ls ||= {})[t] = f; }, removeEventListener(t) { delete this._ls?.[t]; },
     getBoundingClientRect: () => ({ width: 800, height: 300, left: 0, top: 0, right: 800, bottom: 300 }),
     querySelector: () => null, querySelectorAll: () => [],
     focus: absorb, click() { if (this.onclick) this.onclick(); },
@@ -81,11 +81,13 @@ global.document = {
   createElement: (tag) => makeEl(tag),
   createElementNS: (ns, tag) => makeEl(tag),
   createTextNode: (t) => ({ textContent: String(t), children: [] }),
-  addEventListener: absorb, removeEventListener: absorb,
+  addEventListener(t, f) { (this._ls ||= {})[t] = f; }, removeEventListener(t) { delete this._ls?.[t]; },
   activeElement: null,
 };
 global.getComputedStyle = () => ({ fontSize: "16px", getPropertyValue: () => "" });
 global.window = global;
+const store = new Map();
+global.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
 global.AudioContext = class { resume() { return Promise.resolve(); } get state() { return "running"; } };
 Object.defineProperty(global, "navigator", { value: { mediaDevices: {} }, configurable: true });
 
@@ -107,7 +109,7 @@ stage.set("listening");
 stage.emit("analysis", { features: { envelope: [0.1, 0.5, 0.9, 0.3, 0.7], contour: new Array(24).fill(0.5) } });
 stage.set("queued");
 stage.emit("interpret:start", { lane: "cerebras", t0: performance.now() });
-stage.emit("interpret:header", { lane: "cerebras", vocal: "solicitation", mood: "impatient", confidence: 0.82 });
+stage.emit("interpret:header", { lane: "cerebras", vocal: "solicitation", mood: "impatient", confidence: 0.82, evidence: "rising contour; 2 calls; median f0 600 Hz" });
 const text = "The bowl has been visibly empty for eleven minutes. I am not angry.";
 let sent = 0;
 for (const chunk of text.match(/.{1,4}/gs)) {
@@ -125,7 +127,9 @@ if (joined !== nonSpace) fail(`char text mismatch: "${joined}"`);
 const dim = chars.filter((c) => !c.classList.contains("on"));
 if (dim.length) fail(`${dim.length} chars still not revealed after done`);
 const live = find(capEl, hasCls("visually-hidden"))[0];
-if (!live || live.textContent !== text) fail(`aria-live text wrong: "${live?.textContent}"`);
+if (!live || live.textContent !== text + " Heard: rising contour; 2 calls; median f0 600 Hz.") fail(`aria-live text wrong: "${live?.textContent}"`);
+const evLine = find(capEl, hasCls("cap-ev"))[0];
+if (!evLine || evLine.hidden || !/heard: rising contour/.test(evLine.textContent)) fail(`evidence line wrong: "${evLine?.textContent}"`);
 console.log(`captions: ${chars.length} chars, all revealed, aria-live = final text`);
 
 // reply + gloss
@@ -139,13 +143,13 @@ console.log("captions: reply line + glosses OK");
 stage.set("error");
 stage.emit("interpret:error", { lane: "cerebras", reason: "timeout", status: null });
 
-// race: two lanes, winner flag, margin, groq 501 offline message
+// race: two lanes, winner flag, margin, rival 501 offline message
 stage.emit("intent:race", { on: true });
 stage.set("queued");
 stage.emit("interpret:start", { lane: "cerebras", t0: performance.now() });
-stage.emit("interpret:start", { lane: "groq", t0: performance.now() });
-stage.emit("interpret:delta", { lane: "groq", text: "Someone is at the door!" });
-stage.emit("interpret:done", { lane: "groq", text: "Someone is at the door!", replay: false });
+stage.emit("interpret:start", { lane: "rival", t0: performance.now() });
+stage.emit("interpret:delta", { lane: "rival", text: "Someone is at the door!" });
+stage.emit("interpret:done", { lane: "rival", text: "Someone is at the door!", replay: false });
 stage.emit("interpret:delta", { lane: "cerebras", text: "Hello. Hello. Hello." });
 stage.emit("interpret:done", { lane: "cerebras", text: "Hello. Hello. Hello.", replay: false });
 stage.set("done");
@@ -154,10 +158,10 @@ if (lanes.length !== 2) fail(`expected 2 lanes, got ${lanes.length}`);
 const flags = find(capEl, hasCls("cap-flag")).map((f) => f.textContent);
 if (!flags.some((t) => /finished first/.test(t))) fail(`winner flag missing: ${JSON.stringify(flags)}`);
 if (!flags.some((t) => /margin/.test(t))) fail(`margin missing: ${JSON.stringify(flags)}`);
-stage.emit("interpret:error", { lane: "groq", reason: "http", status: 501 });
-if (![...walk(capEl)].some((e) => e.textContent === "Groq offline (no key)")) fail("groq offline message missing");
+stage.emit("interpret:error", { lane: "rival", reason: "http", status: 501 });
+if (![...walk(capEl)].some((e) => e.textContent === "GPU rival offline (not configured)")) fail("rival offline message missing");
 stage.emit("intent:race", { on: false });
-console.log("captions: race lanes + winner + margin + groq offline OK");
+console.log("captions: race lanes + winner + margin + rival offline OK");
 
 // ---- start.js ----
 const start = await import("../public/start.js");
@@ -172,6 +176,19 @@ const controls = await import("../public/controls.js");
 const ctlEl = makeEl("nav");
 controls.mount(ctlEl, stage);
 if (!ctlEl.children.length) fail("controls mounted nothing");
+// pet name field emits intent:pet on Enter and change
+const petIn = find(ctlEl, hasCls("ctl-pet-in"))[0];
+if (!petIn) fail("pet name field missing");
+let petEvt = null;
+stage.on("intent:pet", (d) => { petEvt = d; });
+petIn.value = "Miso";
+petIn._ls?.keydown?.({ key: "Enter", stopPropagation: absorb });
+if (petEvt?.name !== "Miso") fail(`intent:pet not emitted on Enter: ${JSON.stringify(petEvt)}`);
+petIn.value = "Pesto";
+petEvt = null;
+petIn._ls?.change?.({});
+if (petEvt?.name !== "Pesto") fail(`intent:pet not emitted on change: ${JSON.stringify(petEvt)}`);
+console.log("controls: pet field emits intent:pet");
 stage.set("listening");
 stage.emit("capture:start", { durationMs: 3000, startedAt: performance.now() });
 stage.set("done");

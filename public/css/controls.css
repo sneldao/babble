@@ -151,6 +151,25 @@
 }
 .ctl-input::placeholder { color: var(--ink-2); }
 .ctl-input:disabled { opacity: 0.55; }
+
+.ctl-pet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ctl-pet-lbl {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.ctl-pet-in {
+  flex: none;
+  width: 9ch;
+  height: 44px;
+}
 .ctl-send {
   min-height: 44px;
   padding: 0 20px;
@@ -257,7 +276,7 @@
   .ctl-main { gap: 12px; flex-wrap: nowrap; }
   .ctl-group { gap: 6px; }
   .ctl-group + .ctl-group { padding-left: 12px; }
-  .ctl-reply { flex: 1 1 140px; }
+  .ctl-reply { flex: 1 1 80px; min-width: 0; }
   .ctl-listen { padding: 0 18px; }
   .ctl-btn { padding: 0 10px; }
   .ctl-segbtn { padding: 0 8px; }
