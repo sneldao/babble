@@ -45,7 +45,7 @@ export function analyzeBuffer(buf, { pinned = false } = {}) {
       if (e * e < 1e-4) continue;
       const m = mags[n];
       for (let k = 0; k < bins; k++) m[k] = Math.max(0, m[k] - NOISE_K * noise[k]);
-      cands[n] = pitchCandidates(hp.subarray(i, i + N), sr, m);
+      cands[n] = pitchCandidates(hp.subarray(i, i + N), sr, m, noise);
     }
     trackPitch(frames, cands);
   }
@@ -74,6 +74,7 @@ export function analyzeBuffer(buf, { pinned = false } = {}) {
   }
   if (cur) segs.push(cur);
   if (!pinned) for (let i = segs.length - 1; i >= 0; i--) if (segs[i].length * frameMs < MIN_CALL_MS) segs.splice(i, 1);
+  if (!pinned) for (const sg of segs) settleOctave(sg);
   const segments = segs.map((s) => {
     const f0s = s.map((f) => f.f0).sort((a, b) => a - b);
     const durMs = Math.round(s.length * frameMs);
@@ -200,7 +201,7 @@ function highpass(pcm, sr, hz) {
 
 const CREL = 0.5;
 // every local autocorrelation peak within CREL of the best one, as { f, r }
-function pitchCandidates(w, sr, mag) {
+function pitchCandidates(w, sr, mag, noise) {
   const minLag = Math.floor(sr / 1000), maxLag = Math.floor(sr / 80);
   const rs = new Float32Array(maxLag + 2);
   let best = 0;
@@ -229,7 +230,7 @@ function pitchCandidates(w, sr, mag) {
   };
   // harmonic sum: the first NH harmonics of each candidate, background removed
   const pool = [];
-  for (const c of keep) for (const m of [1, 2, 3]) if (c.f * m <= 1000) pool.push(c.f * m);
+  for (const c of keep) for (const m of [0.5, 1, 2, 3]) if (c.f * m <= 1000 && c.f * m >= 80) pool.push(c.f * m);
   let top = 0;
   const scored = pool.map((f) => {
     let sum = 0, odd = 0, even = 0;
@@ -241,15 +242,33 @@ function pitchCandidates(w, sr, mag) {
     }
     if (sum > top) top = sum;
     // energy only on the even harmonics means the real pitch is an octave up
-    return { f, sum, half: odd < HALF_RATIO * even };
+    return { f, sum, off: odd < HALF_RATIO * even };
   });
   if (top <= 0) return null;
+  // voiced only if the best candidate's harmonics stand clear of the background
+  const lead = scored.reduce((x, y) => (y.sum > x.sum ? y : x));
+  let floor = 0;
+  for (let h = 1; h <= NH; h++) floor += noise[Math.round((h * lead.f) / binHz)] || 0;
+  if (lead.sum < VOICE_SNR * floor) return null;
   // no cost within TIE of the best sum; a slight lean towards the higher pitch
   const fmax = Math.max(...scored.map((c) => c.f));
-  return scored.map((c) => ({ f: c.f, cost: CA * Math.max(0, 1 - c.sum / (TIE * top)) + (c.half ? CA : 0) + 0.05 * Math.log2(fmax / c.f) }));
+  return scored.map((c) => ({ f: c.f, cost: CA * Math.max(0, 1 - c.sum / (TIE * top)) + (c.off ? CA : 0) + LEAN * Math.log2(fmax / c.f) }));
 }
 
-const CA = 4, CB = 5;
+// Within one call the fundamental can drop under the noise while its second
+// harmonic stays audible, and the track then sits an octave high. If part of
+// the call was tracked with confidence at half the call's median, the lower reading is the
+// real one: bring the octave-high frames down to it.
+function settleOctave(sg) {
+  const sorted = sg.map((f) => f.f0).sort((a, b) => a - b);
+  const med = sorted[sorted.length >> 1];
+  const low = sg.filter((f) => f.sure && f.f0 > med * 0.45 && f.f0 < med * 0.56).map((f) => f.f0).sort((a, b) => a - b);
+  if (low.length < Math.max(8, sg.length * 0.05)) return;
+  const base = low[low.length >> 1];
+  for (const f of sg) if (f.f0 > base * 1.8 && f.f0 < base * 2.2) f.f0 /= 2;
+}
+
+const CA = 4, CB = 5, LEAN = 0.05;
 // cheapest path through each run of voiced frames: the candidate cost per
 // frame plus CB per octave moved between neighbouring frames
 function trackPitch(frames, cands) {
@@ -276,13 +295,14 @@ function trackPitch(frames, cands) {
     for (let p = 1; p < prev.length; p++) if (prev[p].cost < prev[bi].cost) bi = p;
     for (let k = j - 1; k >= i; k--) {
       frames[k].f0 = cands[k][bi].f;
+      frames[k].sure = cands[k][bi].cost < 0.5;
       bi = backs[k - i][bi].back;
     }
     i = j;
   }
 }
 
-const NOISE_K = 2;
+const NOISE_K = 2, VOICE_SNR = 2;
 const FFT_N = 4096, TOP_HZ = 5000, NH = 5, TIE = 0.85, HALF_RATIO = 0.3;
 // FFT_N samples centred on `mid`, zero where the clip ends
 function longFrame(pcm, mid) {
