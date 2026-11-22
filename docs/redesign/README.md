@@ -164,27 +164,44 @@ them; do not edit it.
      usage downstream. No gateway code patch was needed.
   The successful `/api/compare` run logged 68 output tokens, 143 reasoning
   tokens and `tokensEstimated: false`. The running app lists the rival as
-  available. The earlier Cerebras trial check had no usable streaming usage;
-  that lane's rate was estimated. A live take with both lanes is still pending.
+  available. The later two-lane run below also confirmed that the Cerebras
+  trial lane can return usage, though earlier checks did not receive it.
 - **Not tested:** a real microphone capture (automation has no mic).
 - **Checks:** `node scripts/devc-smoke.mjs`, `node scripts/devd-smoke.mjs`,
   `node scripts/ribbon-evidence-test.mjs`.
 - **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
   `agent-workspace/memory/`) are gitignored.
 
-## Left before submission (22 Nov, 12:56 UTC)
+## Live GPU race verification (22 Nov)
 
-| # | Item | Owner | Notes |
-|---|---|---|---|
-| 1 | Speed bounty post | you (in progress) | Figures fixed: 1,032 TPS p90 server-side, 572 mean on the same run. Draft in `SUBMISSION.md`. |
-| 2 | 60 s demo video | Devin drives; you supply pet videos | Plan is in "Demo video plan" below. Needs 2-3 clips of a real animal calling, the pet's name, and your call on the open decisions. |
-| 3 | `SUBMISSION.md` placeholders | you | Team handle `@<your-handle>` and the video link/attachment. |
-| 4 | GPU race take | you | Nebius is configured and `/api/compare` is verified. Capture a live two-lane take; keep wait and decode separate and leave the `est.` label visible where applicable. |
-| 5 | Real microphone check | you | Mic capture has never run on real hardware; do one LISTEN take against a real animal before filming. |
-| 6 | Cerebras support message | you | Drafted for `#hackathon-support` (queue_exceeded pattern + org TPM question), still unposted. |
-| 7 | Post the drafts | you | X post, Reddit, Discord speed-bounty line — all in `SUBMISSION.md`. |
-| 8 | Housekeeping | anyone | `shopper-run.png` in the repo root is a committed stray screenshot; the Dev D drafts sit in Trash. |
-| 9 | Try your own pet video | you | The upload path is verified with a synthetic video only. Try one real clip (phone and desktop) before filming; it is the easiest way to get a good take. |
+Both lanes received the same single cat meow (`cat-meow.wav`) concurrently
+through Babble's browser client and OpenClaw. This run used a 180 s
+first-content budget and a 30 s mid-stream stall limit on both lanes. The
+app defaults (12 s and 8 s) were unchanged; no replay or video was recorded.
+
+| Lane | Time to first content | Browser decode | Output tokens | Reasoning tokens | Output tok/s |
+|---|---:|---:|---:|---:|---:|
+| Cerebras trial | 115.42 s | 6.15 s | 67 | 159 | 10.9 |
+| Nebius GPU | 16.98 s | 0.87 s | 72 | 188 | 83.0 |
+
+Both lanes reported usage (`tokensEstimated: false`). Output rates exclude
+reasoning tokens. Earlier attempts timed out or stalled; this is one
+completed comparison through the gateway, not a hardware benchmark or the
+separate Discord speed-bounty measurement.
+
+## Submitted (22 Nov, ~16:15 UTC)
+
+All three posts are live: X (the official entry), r/Cerebras with the
+"Kimi K3.1 Pro Hackathon" flair, and the speed-bounty post in Discord
+`#share-your-demo`. The demo video is the 37.7 s `Babble - final.mp4`: one
+fresh live take of the roof clip, the 130 s queue wait trimmed and labelled,
+the answer streaming at 1x in 0.79 s. The bounty post uses the walkthrough
+cut showing 1,032 TPS p90 / 572 TPS mean and the five products, all links
+verified to real product pages.
+
+Checks: `node scripts/devc-smoke.mjs`, `node scripts/devd-smoke.mjs`,
+`node scripts/ribbon-evidence-test.mjs` — green on the submitted build.
+The stray `shopper-run.png` screenshot was removed from the repo root.
 
 ## Review follow-ups (M2.5)
 
@@ -193,15 +210,15 @@ A pre-submission review raised four objections. What we found and decided:
 - **"Lands before the meow finishes" was false.** LISTEN records a fixed
   3 s window before anything is sent, and the first word then waits on a
   shared trial queue (measured 10-170 s, including OpenClaw retrying
-  Cerebras 429s) plus the model's hidden thinking. The claim is now: once the
-  model starts answering, the whole translation streams in within a fraction
-  of a second. Decode time is the headline number; wait is shown apart.
+  Cerebras 429s) plus the model's hidden thinking. The claim is now limited to
+  what the take shows. Decode time is the headline number; wait is shown
+  separately.
 - **The race compared different models on a non-GPU provider with guessed
   tokens.** The rival is now the same model (Kimi K3.1 Pro) at Nebius
   (GPU), routed through a second OpenClaw agent with the same workspace.
   Tokens come from the provider's usage report where the endpoint sends one;
-  estimates are labelled. Nebius returned usage after the compat fix; no
-  usable streaming usage was observed on the Cerebras trial lane.
+  estimates are labelled. Both lanes returned usage on the completed live
+  race, though that is not guaranteed on every run.
 - **OpenClaw was a pass-through.** The workspace is now the only prompt,
   sessions are real (the agent hears replies), and the agent keeps per-pet
   memory with its own tools at session end. Measured on the live gateway:
@@ -236,7 +253,7 @@ large captions and short on-screen labels carry it; the meows are a bonus.
 | 0:06-0:18 | It is measured | The same clip uploaded: ribbon paints while it plays, call brackets and pitch line settle, the verdict stamps in, the evidence line and its ribbon marker are held for two seconds, the snapshot card shows the frame that was sent. |
 | 0:18-0:28 | It listens | A second, different call from the same animal: a different class and different evidence. |
 | 0:28-0:40 | It remembers | A typed reply is voiced back as meows; the next call answers it. The pet is given its real name first, so the session starts with empty memory and the callback is caused on camera. |
-| 0:40-0:52 | Speed | The decode readout, with wait shown beside it. The two-lane race is used only if a live take with both lanes finishing exists; otherwise this beat shows decode time on Cerebras alone plus the separately measured bounty figure, labelled as such. |
+| 0:40-0:52 | Speed | Show the decode readout with wait beside it. Use the two-lane view only if both lanes finish in a recorded live take. The browser-client test verified the race but did not capture footage. If only one lane finishes on camera, show that live result without a head-to-head claim. |
 | 0:52-1:00 | End card | Wordmark, hosted demo URL, repo, `#KimiOnCerebras`. |
 
 Rules for the edit:

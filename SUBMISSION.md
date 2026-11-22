@@ -1,4 +1,16 @@
-# Babble — submission drafts
+# Babble — submission copy
+
+**Posted (22 Nov):** X, Reddit (r/Cerebras, "Kimi K3.1 Pro Hackathon" flair) and
+Discord `#share-your-demo` are all live.
+
+- Reddit: https://www.reddit.com/r/Cerebras/comments/1y2slhx/
+- Demo video: `Babble - final.mp4` (37.7 s) — fresh live take, queue wait
+  trimmed and labelled, 0.79 s decode on screen
+- Speed bounty: `babble-speed-bounty-walkthrough.mp4` / fresh-take cut with
+  1,032 TPS p90 / 572 TPS mean and the five products
+
+Copy below kept as the record of what was posted.
+
 
 ## X post (required, the official entry)
 
