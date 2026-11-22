@@ -88,6 +88,15 @@ them; do not edit it.
   attempts did not finish in 180s. Decode after the first token is about 0.6s.
   With the normal 12s budget every live run falls back to REPLAY, and
   talk-back (`/api/vocalize`, same 12s budget) times out.
+- **Where the wait comes from (measured 07:51-07:58 UTC):** the Cerebras
+  trial endpoint, not OpenClaw overhead. Direct calls to
+  `api.cerebras.ai` with a 137-token prompt got `429 queue_exceeded`
+  ("high traffic") 19 times in a row, then one request with a 40 s
+  server-side `queue_time`, then four that started in 0.5-2.6 s. OpenClaw
+  adds to it: it retries each 429 with growing backoff (1 s up to ~27 s
+  gaps), so the same trivial prompt through the gateway took 49-108 s to
+  first token. Once admitted, Cerebras generates 60 tokens in 0.06-0.16 s.
+  Probes: `/tmp/babble-direct-probe.mjs`, `/tmp/babble-gw-probe.mjs`.
 - **Known layout bug:** in the `done` state the header chip line is clipped
   behind the caption and the first caption line scrolls out of view.
 - **Agent artefacts** (`.perch/`, `.freebuff/`, `agent-workspace/DREAMS.md`,
