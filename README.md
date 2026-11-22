@@ -58,6 +58,15 @@ Requires OpenClaw (`npm i -g openclaw`), Node ≥ 20, a Cerebras API key.
 3. The interpretation streams in — vocal class, mood, confidence, utterance.
 4. Reply in the box — Babble vocalizes it back. Keep the mic on: the animal
    answers in-session (OpenClaw keeps the conversation context).
+5. Flip on **race** — the same acoustic payload runs through Groq
+   (`GROQ_API_KEY`) alongside Cerebras, so the two translations compete
+   bubble-for-bubble with their own tok/s.
+
+## Notes on speed
+
+The tok/s meter measures browser-observed decode rate. Under hackathon load
+the trial endpoint queues; the UI shows the wait honestly, then streams at
+full speed once dequeued.
 
 ## Honesty notes
 
