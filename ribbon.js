@@ -455,7 +455,7 @@ export function mount(el, stage) {
       else markGroups.push([m]);
     }
     for (const grp of markGroups) {
-      const col = grp[0].lane === "groq" ? C.rival : C.ink;
+      const col = grp[0].lane === "rival" ? C.rival : C.ink;
       const replay = grp[0].replay;
       ctx.strokeStyle = col;
       ctx.lineWidth = 1;
@@ -487,7 +487,7 @@ export function mount(el, stage) {
       } else {
         const m = grp[0];
         label = `${m.kind === "first" ? "first word" : "last word"}` +
-          (m.lane === "groq" ? " · groq" : "") + (m.replay ? " · replay" : "");
+          (m.lane === "rival" ? " · gpu" : "") + (m.replay ? " · replay" : "");
         tw = ctx.measureText(label).width;
         lx = Math.min(Math.max(PAD.l + 2, xFor(m.ms) + 6), PAD.l + pw - tw);
       }
@@ -680,7 +680,7 @@ export function mount(el, stage) {
       S.raceOn = false;
       // A live retry reuses the capture: drop stale marks, keep the picture.
       if (!S.capture) { S.marks = []; S.failed = false; }
-    } else if (d.lane === "groq") {
+    } else if (d.lane === "rival") {
       S.raceOn = true;
     }
     draw();

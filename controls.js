@@ -94,14 +94,14 @@ export function mount(el, st) {
     b.addEventListener("click", () => st.setSpecies(sp));
     spWrap.appendChild(b);
   }
-  const raceBtn = B("ctl-switch", "", { role: "switch", "aria-checked": "false", "aria-label": "Race Groq" });
+  const raceBtn = B("ctl-switch", "", { role: "switch", "aria-checked": "false", "aria-label": "Race a GPU" });
   const raceTrack = document.createElement("span");
   raceTrack.className = "ctl-switch-track";
   const raceThumb = document.createElement("span");
   raceThumb.className = "ctl-switch-thumb";
   raceTrack.appendChild(raceThumb);
   const raceLbl = document.createElement("span");
-  raceLbl.textContent = "Race Groq";
+  raceLbl.textContent = "Race a GPU";
   raceBtn.append(raceTrack, raceLbl);
   const muteBtn = B("ctl-btn", "Mute", { "aria-pressed": "false" });
   gOpts.append(spWrap, raceBtn, muteBtn);

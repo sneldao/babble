@@ -42,7 +42,7 @@ export function mount(el, stage) {
   const mctx = mask.getContext("2d", { willReadFrequently: true });
   const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const lanes = { cerebras: blank(), groq: blank() };
+  const lanes = { cerebras: blank(), rival: blank() };
   function blank() {
     return { phase: "idle", tps: null, queueMs: null, decodeMs: null, tokens: null, replay: false, t0: 0, failed: false };
   }
@@ -172,9 +172,9 @@ export function mount(el, stage) {
       : "";
     line2.style.color = colors.ink2;
     if (raceOn) {
-      const g = lanes.groq;
-      const gbig = g.failed && g.phase === "error" ? "groq offline"
-        : g.tps != null ? `groq ${Math.round(g.tps)} tok/s` : "groq —";
+      const g = lanes.rival;
+      const gbig = g.failed && g.phase === "error" ? "gpu offline"
+        : g.tps != null ? `gpu ${Math.round(g.tps)} tok/s` : "gpu —";
       const gsmall = g.phase === "queued" ? `queue ${fmtS(now - g.t0)}`
         : g.queueMs != null ? `queue ${fmtS(g.queueMs)} · decode ${fmtS(g.decodeMs ?? 0)}` : "";
       line3.textContent = gsmall ? `${gbig} · ${gsmall}` : gbig;
@@ -193,7 +193,7 @@ export function mount(el, stage) {
     paintMask();
     drawDots(reveal);
     renderText(now);
-    if (!booted || lanes.cerebras.phase === "queued" || (raceOn && lanes.groq.phase === "queued")) {
+    if (!booted || lanes.cerebras.phase === "queued" || (raceOn && lanes.rival.phase === "queued")) {
       raf = requestAnimationFrame(frame);
     }
   }
@@ -205,7 +205,7 @@ export function mount(el, stage) {
 
   stage.on("capture:start", () => {
     lanes.cerebras = blank();
-    lanes.groq = blank();
+    lanes.rival = blank();
     raceOn = false;
     kick();
   });
@@ -213,11 +213,11 @@ export function mount(el, stage) {
   stage.on("interpret:start", (d) => {
     if (d.lane === "cerebras") {
       lanes.cerebras = { ...blank(), phase: "queued", t0: d.t0 || performance.now() };
-      lanes.groq = blank();
+      lanes.rival = blank();
       say("Queued. Counting queue time.");
-    } else if (d.lane === "groq") {
+    } else if (d.lane === "rival") {
       raceOn = true;
-      lanes.groq = { ...blank(), phase: "queued", t0: d.t0 || performance.now() };
+      lanes.rival = { ...blank(), phase: "queued", t0: d.t0 || performance.now() };
       say("Race on: second lane queued.");
     }
     kick();
