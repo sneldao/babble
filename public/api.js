@@ -15,7 +15,7 @@ export function interpret(payload, { lane = "cerebras", budgetMs = 12000, stallM
 
     let res;
     try {
-      res = await fetch(lane === "rival" ? "/api/compare" : "/api/interpret", {
+      res = await fetch(lane === "rival" ? "api/compare" : "api/interpret", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -134,7 +134,7 @@ export async function vocalize(payload, { budgetMs = 12000 } = {}) {
   const t = setTimeout(() => ac.abort("timeout"), budgetMs);
   let res;
   try {
-    res = await fetch("/api/vocalize", {
+    res = await fetch("api/vocalize", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),

@@ -6,6 +6,7 @@ Project Name: Babble
 Team Members: @<your-handle>
 Project Description: Babble is an interspecies interpreter: point a mic at your cat or dog, browser DSP measures the actual vocalization (pitch contour, call segmentation, spectral centroid), and an OpenClaw agent on Kimi K3.1 Pro @ Cerebras says what it meant, citing the measurements behind each read. Once it starts answering, the whole translation lands in a fraction of a second. Talk back and it re-synthesizes your words as meows; it remembers each pet between sessions. Race it against the same model on GPUs.
 GitHub Repository: https://github.com/sneldao/babble
+Hosted demo (recorded answers): https://sneldao.github.io/babble/
 Demo Video: (attach 60s)
 
 #KimiOnCerebras @Cerebras @Kimi_Moonshot
@@ -25,6 +26,7 @@ keeps notes on each pet for next time. Flip on race to watch the same model
 decode on Cerebras and on GPUs side by side.
 
 Repo: https://github.com/sneldao/babble
+Hosted demo (plays the recorded real responses): https://sneldao.github.io/babble/
 
 ## Speed bounty (Discord #share-your-demo)
 

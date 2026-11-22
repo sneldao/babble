@@ -11,6 +11,10 @@ Built for the **Cerebras × Moonshot Kimi K3.1 Pro × OpenClaw Weekend
 Hackathon**. All interpretation runs through an **OpenClaw** agent (`babble`)
 whose backend model is **Kimi K3.1 Pro on Cerebras**.
 
+**Hosted demo: https://sneldao.github.io/babble/** — the full experience,
+playing the recorded real responses for each sample clip (labelled REPLAY).
+For the live model, run it locally as below.
+
 ## Architecture
 
 ```
